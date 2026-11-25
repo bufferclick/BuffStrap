@@ -33,6 +33,16 @@ internal static class Program
             App.Settings.Prop.Theme = Theme.Dark;
             var app = new App();
             app.InitializeComponent();
+            // The production handler opens a modal dialog, which cannot be dismissed
+            // on a headless runner. Fail the test instead of hanging indefinitely.
+            var globalHandler = typeof(App).GetMethod("GlobalExceptionHandler", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            app.DispatcherUnhandledException -= (DispatcherUnhandledExceptionEventHandler)Delegate.CreateDelegate(typeof(DispatcherUnhandledExceptionEventHandler), app, globalHandler);
+            app.DispatcherUnhandledException += (_, args) =>
+            {
+                string details = args.Exception.ToString().Replace("%", "%25").Replace("\r", "%0D").Replace("\n", "%0A");
+                Console.WriteLine("::error title=Unhandled WPF exception::" + details);
+                Environment.Exit(1);
+            };
             app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var launchSettings = new LaunchSettings(Array.Empty<string>());
             typeof(App).GetProperty("LaunchSettings")!.GetSetMethod(true)!.Invoke(null, new object[] { launchSettings });
@@ -313,8 +323,10 @@ internal static class Program
         RobloxLoginWindow? second = null;
         try
         {
+            Mark("Opening the first WebView2 window");
             first.Show();
             WaitForBrowser(first);
+            Mark("First WebView2 initialized");
             var firstBrowser = (WebView2)first.FindName("Browser");
             var firstWeb = firstBrowser.CoreWebView2;
             firstWeb.Stop();
@@ -331,9 +343,11 @@ internal static class Program
             Assert(Pump(firstWeb.CookieManager.GetCookiesAsync("https://www.roblox.com/")).Any(x => x.Name == ".ROBLOSECURITY" && x.Value == "synthetic-test-session"),
                 "The isolated sign-in cookie could not be read.");
 
+            Mark("Opening the second WebView2 window");
             second = new RobloxLoginWindow();
             second.Show();
             WaitForBrowser(second);
+            Mark("Second WebView2 initialized");
             var secondWeb = ((WebView2)second.FindName("Browser")).CoreWebView2;
             secondWeb.Stop();
             Assert(secondWeb.Profile.IsInPrivateModeEnabled &&
