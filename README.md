@@ -53,6 +53,7 @@ git submodule update --init --recursive
 dotnet restore .\BuffStrap.sln
 dotnet build .\BuffStrap.sln -c Release
 dotnet run --project .\Tests\ReleaseClient.Tests\ReleaseClient.Tests.csproj -c Release
+dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Release
 dotnet publish .\Bloxstrap\Bloxstrap.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 dotnet publish .\BuffStrapSetup\BuffStrapSetup.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```

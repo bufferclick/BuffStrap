@@ -14,7 +14,7 @@ namespace Bloxstrap
         {
             try
             {
-                if (!File.Exists(FilePath) || new FileInfo(FilePath).Length > 65536) return null;
+                if (!File.Exists(FilePath) || new FileInfo(FilePath).Length > 256 * 1024) return null;
                 return JsonSerializer.Deserialize<UpdateCheckCache>(File.ReadAllText(FilePath));
             }
             catch (Exception ex)

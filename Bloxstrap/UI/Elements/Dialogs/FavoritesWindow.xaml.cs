@@ -141,6 +141,14 @@ namespace Bloxstrap.UI.Elements.Dialogs
             catch (Exception ex) { ShowError("Could not start the game", ex); }
         }
 
+        private void ClearRecent_Click(object sender, RoutedEventArgs e)
+        {
+            if (Frontend.ShowMessageBox("Clear the Recently Played list? Your favorites will be kept.",
+                    MessageBoxImage.Question, MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+            try { FavoritesLauncher.Store.Update(data => data.Recent.Clear()); Reload(); }
+            catch (Exception ex) { ShowError("Could not clear Recently Played", ex); }
+        }
+
         private void Shortcut_Click(object sender, RoutedEventArgs e)
         {
             if ((sender as FrameworkElement)?.DataContext is not FavoriteRow row) return;

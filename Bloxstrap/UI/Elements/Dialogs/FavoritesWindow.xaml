@@ -66,11 +66,15 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                        <TextBlock Text="Recently Played" FontSize="20" FontWeight="Medium" />
-                        <TextBlock Text="Games are recorded after joining while BuffStrap activity tracking is enabled. Up to 50 are kept on this device."
-                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                    </StackPanel>
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Recently Played" FontSize="20" FontWeight="Medium" />
+                            <TextBlock Text="Games are recorded after joining while BuffStrap activity tracking is enabled. Up to 50 are kept on this device."
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <ui:Button Grid.Column="1" Content="Clear history" Margin="12,0,0,0" Click="ClearRecent_Click" />
+                    </Grid>
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl x:Name="RecentList">
                             <ItemsControl.ItemTemplate>

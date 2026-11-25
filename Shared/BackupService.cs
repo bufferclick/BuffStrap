@@ -125,7 +125,12 @@ public static class BackupService
                 if (meta.Length > 4 * 1024 * 1024) throw new InvalidDataException("The backup manifest is too large.");
                 BackupManifest manifest;
                 using (var stream = meta.Open())
-                    manifest = JsonSerializer.Deserialize<BackupManifest>(stream) ?? throw new InvalidDataException("The backup manifest is empty.");
+                using (var bounded = new MemoryStream())
+                {
+                    CopyAndHash(stream, bounded, meta.Length); // enforce the limit even if ZIP metadata lies
+                    bounded.Position = 0;
+                    manifest = JsonSerializer.Deserialize<BackupManifest>(bounded) ?? throw new InvalidDataException("The backup manifest is empty.");
+                }
                 if (manifest.SchemaVersion != 1 || manifest.Files is null || manifest.Files.Count > MaxFiles || manifest.Files.Count + 1 != zip.Entries.Count)
                     throw new InvalidDataException("The backup manifest has an unsupported format.");
 
