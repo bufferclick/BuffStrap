@@ -87,7 +87,29 @@ internal static class Program
             var repairType = typeof(App).Assembly.GetType("Bloxstrap.InstallationRepair", throwOnError: true)!;
             repairType.GetMethod("SchedulePlayerReinstall", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, null);
             using var state = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "State.json")));
-            Assert(state.RootElement.GetProperty("ForceReinstall").GetBoolean(), "The repair was not scheduled.");
+            Assert(state.RootElement.GetProperty("ForcePlayerRepair").GetBoolean(), "The Player repair was not scheduled.");
+
+            // A Studio or background update must not consume a Player-only repair.
+            var launchSettings = new LaunchSettings(Array.Empty<string>());
+            typeof(App).GetProperty("LaunchSettings")!.GetSetMethod(true)!.Invoke(null, new object[] { launchSettings });
+            App.Settings.Prop.StaticDirectory = true;
+            var playerData = App.Distribution.RobloxPlayerData;
+            var studioData = App.Distribution.RobloxStudioData;
+            playerData.State.VersionGuid = "version-player";
+            studioData.State.VersionGuid = "version-studio";
+            foreach (var client in new[] { playerData, studioData })
+            {
+                Directory.CreateDirectory(client.Directory);
+                File.WriteAllText(client.ExecutablePath, "test");
+            }
+            var mustUpgrade = typeof(Bootstrapper).GetProperty("_mustUpgrade", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            var studioBootstrapper = new Bootstrapper(LaunchMode.Studio);
+            var playerBootstrapper = new Bootstrapper(LaunchMode.Player);
+            Assert(!(bool)mustUpgrade.GetValue(studioBootstrapper)!, "A Player repair unexpectedly forced Studio to reinstall.");
+            Assert((bool)mustUpgrade.GetValue(playerBootstrapper)!, "A Player repair did not force a Player reinstall.");
+            launchSettings.BackgroundUpdaterFlag.Active = true;
+            Assert(!(bool)mustUpgrade.GetValue(playerBootstrapper)!, "A background update consumed a Player repair.");
+            launchSettings.BackgroundUpdaterFlag.Active = false;
 
             // Older releases already honor CheckForUpdates, so this persisted flag
             // must be false before starting a deliberate rollback.

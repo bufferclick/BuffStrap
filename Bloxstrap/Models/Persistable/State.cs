@@ -1,4 +1,4 @@
-﻿using System.Windows.Forms;
+using System.Windows.Forms;
 
 namespace Bloxstrap.Models.Persistable
 {
@@ -15,6 +15,10 @@ namespace Bloxstrap.Models.Persistable
         public string? LastPage {  get; set; } = null!;
 
         public bool ForceReinstall { get; set; } = false;
+
+        // A repair requested from Update Center applies only to the Player, even
+        // if Studio or the background updater runs before the next Player launch.
+        public bool ForcePlayerRepair { get; set; } = false;
 
         public WindowState SettingsWindow { get; set; } = new();
 

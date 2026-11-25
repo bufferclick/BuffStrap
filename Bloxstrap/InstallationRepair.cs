@@ -119,11 +119,11 @@ namespace Bloxstrap
 
         public static void SchedulePlayerReinstall()
         {
-            App.State.Prop.ForceReinstall = true;
+            App.State.Prop.ForcePlayerRepair = true;
             App.State.Save();
             var saved = JsonSerializer.Deserialize<State>(File.ReadAllText(App.State.FileLocation));
-            if (saved is null || !saved.ForceReinstall)
-                throw new IOException("Could not save the scheduled reinstall.");
+            if (saved is null || !saved.ForcePlayerRepair)
+                throw new IOException("Could not save the scheduled Player repair.");
         }
 
         private static void RequireApp()

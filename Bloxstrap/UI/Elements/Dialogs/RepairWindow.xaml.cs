@@ -51,7 +51,7 @@ namespace Bloxstrap.UI.Elements.Dialogs
             if (UninstallCheck.IsChecked == true) work.Add(("Installation registration", InstallationRepair.RestoreUninstallRegistration));
             if (DesktopCheck.IsChecked == true) work.Add(("Desktop shortcut", () => InstallationRepair.RestoreShortcut(true)));
             if (StartCheck.IsChecked == true) work.Add(("Start menu shortcut", () => InstallationRepair.RestoreShortcut(false)));
-            if (PlayerCheck.IsChecked == true) work.Add(("Roblox Player reinstall on next launch", InstallationRepair.SchedulePlayerReinstall));
+            if (PlayerCheck.IsChecked == true) work.Add(("Roblox Player reinstall on next Player launch", InstallationRepair.SchedulePlayerReinstall));
             if (work.Count == 0)
             {
                 Frontend.ShowMessageBox("Select at least one repair.", MessageBoxImage.Information);
@@ -70,14 +70,14 @@ namespace Bloxstrap.UI.Elements.Dialogs
             var report = new List<string>();
             foreach (var item in work)
             {
-                try { item.Run(); report.Add("✓ " + item.Name + (item.Name.Contains("next launch") ? " scheduled" : " repaired")); }
+                try { item.Run(); report.Add("✓ " + item.Name + (item.Name.StartsWith("Roblox Player reinstall", StringComparison.Ordinal) ? " scheduled" : " repaired")); }
                 catch (Exception ex)
                 {
                     App.Logger.WriteException("RepairWindow::Repair", ex);
                     report.Add("✗ " + item.Name + ": " + ex.Message);
                 }
             }
-            FindingsText.Text = String.Join("\n", report) + "\n\nA scheduled Roblox reinstall completes only after a successful next launch.";
+            FindingsText.Text = String.Join("\n", report) + "\n\nA scheduled Roblox Player reinstall completes only after a successful Player launch.";
         }
     }
 }

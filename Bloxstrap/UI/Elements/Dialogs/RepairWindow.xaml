@@ -22,7 +22,7 @@
                 <CheckBox x:Name="UninstallCheck" Content="Restore BuffStrap installation registration" Margin="0,8,0,0" />
                 <CheckBox x:Name="DesktopCheck" Content="Create or replace the Desktop shortcut" Margin="0,8,0,0" />
                 <CheckBox x:Name="StartCheck" Content="Create or replace the Start menu shortcut" Margin="0,8,0,0" />
-                <CheckBox x:Name="PlayerCheck" Content="Reinstall Roblox Player files on the next launch" Margin="0,8,0,0" />
+                <CheckBox x:Name="PlayerCheck" Content="Reinstall Roblox Player files on the next Player launch" Margin="0,8,0,0" />
                 <TextBlock Text="Missing shortcuts may be intentional, so they are not selected automatically. Reinstalling Roblox may require a network connection and close a running player. Settings, mods, favorites and Roblox login data are not removed."
                            TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,12,0,0" />
             </StackPanel>
