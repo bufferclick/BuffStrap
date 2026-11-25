@@ -77,6 +77,17 @@ internal static class Program
             var link = ShellLink.Shortcut.ReadFromFile(linkPath);
             Assert(link.StringData.CommandLineArguments == $"-favorite {first.Id:D}", "Shortcut did not target the saved favorite.");
             Assert(link.ExtraData.EnvironmentVariableDataBlock.TargetUnicode == Path.Combine(root, "BuffStrap.exe"), "Shortcut pointed to the wrong launcher.");
+            byte[] originalLink = File.ReadAllBytes(linkPath);
+            try
+            {
+                create.Invoke(null, new object[] { first, new List<string> { linkPath }, false });
+                throw new InvalidOperationException("A shortcut was overwritten without consent.");
+            }
+            catch (TargetInvocationException ex) when (ex.InnerException is IOException) { }
+            Assert(File.ReadAllBytes(linkPath).SequenceEqual(originalLink), "The existing shortcut was changed without consent.");
+            create.Invoke(null, new object[] { first, new List<string> { linkPath }, true });
+            Assert(ShellLink.Shortcut.ReadFromFile(linkPath).StringData.CommandLineArguments == $"-favorite {first.Id:D}",
+                "Consented shortcut replacement failed.");
             var getPaths = shortcutType.GetMethod("GetPaths", BindingFlags.Public | BindingFlags.Static)!;
             var choices = (IReadOnlyList<string>)getPaths.Invoke(null, new object[] { first, true, true })!;
             var desktop = (IReadOnlyList<string>)getPaths.Invoke(null, new object[] { first, true, false })!;

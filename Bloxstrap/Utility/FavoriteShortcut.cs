@@ -24,13 +24,15 @@ namespace Bloxstrap.Utility
             foreach (string path in paths)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                if (File.Exists(path))
+                if (File.Exists(path) && !replace) throw new IOException("A shortcut already exists: " + path);
+                string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                try
                 {
-                    if (!replace) throw new IOException("A shortcut already exists: " + path);
-                    File.Delete(path);
+                    Shortcut.Create(Paths.Application, $"-favorite {game.Id:D}", temporary);
+                    if (!File.Exists(temporary)) throw new IOException("Could not create shortcut: " + path);
+                    File.Move(temporary, path, replace);
                 }
-                Shortcut.Create(Paths.Application, $"-favorite {game.Id:D}", path);
-                if (!File.Exists(path)) throw new IOException("Could not create shortcut: " + path);
+                finally { if (File.Exists(temporary)) File.Delete(temporary); }
             }
         }
     }
