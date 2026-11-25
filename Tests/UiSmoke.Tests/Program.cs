@@ -11,6 +11,7 @@ using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using BuffStrap.Favorites;
+using BuffStrap.Accounts;
 using Bloxstrap;
 using Bloxstrap.Enums;
 using Bloxstrap.UI.Elements.Dialogs;
