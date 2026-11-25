@@ -41,6 +41,8 @@ public static class BackupService
     private const long MaxTotalSize = 1024L * 1024 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private static readonly string[] Roots = { "Modifications", "Profiles", "CustomThemes" };
+    private static readonly string[] CredentialMarkers = { ".ROBLOSECURITY", "_|WARNING:-DO-NOT-SHARE-THIS", "rbx-authentication-ticket", "x-csrf-token" };
+    private static readonly byte[][] MarkerBytes = CredentialMarkers.SelectMany(x => new[] { Encoding.ASCII.GetBytes(x.ToUpperInvariant()), Encoding.ASCII.GetBytes(x.ToLowerInvariant()) }).ToArray();
 
     public static BackupResult Create(string baseDirectory, string archivePath)
     {
@@ -53,10 +55,11 @@ public static class BackupService
         string relativeArchive = Path.GetRelativePath(baseDirectory, archivePath).Replace(Path.DirectorySeparatorChar, '/');
         if (Roots.Any(root => relativeArchive.StartsWith(root + "/", StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException("Choose a backup location outside the mod, profile and theme folders.");
-        byte[] settings = SanitizeSettings(File.ReadAllBytes(settingsPath));
+        byte[] settings = SanitizeSettings(File.ReadAllBytes(settingsPath), out bool sanitizedSettings);
         byte[] favorites = Encoding.UTF8.GetBytes(FavoritesStore.Serialize(new FavoritesStore(Path.Combine(baseDirectory, "Favorites.json")).Load()));
         var files = new List<(string Relative, string Source)>();
         var skipped = new List<string>();
+        if (sanitizedSettings) skipped.Add("Settings.json: possible credential fields or values");
         foreach (string root in Roots)
         {
             string path = Path.Combine(baseDirectory, root);
@@ -159,11 +162,17 @@ public static class BackupService
             }
 
             // Validate the structured files before any installation file is changed.
+            foreach (var file in files.Where(x => x.Path != "Settings.json" && x.Path != "Favorites.json"))
+            {
+                string staged = Path.Combine(stagedFiles, file.Path.Replace('/', Path.DirectorySeparatorChar));
+                if (ContainsCredentialMarker(staged))
+                    throw new InvalidDataException("A backup file contains a recognizable Roblox session marker: " + file.Path);
+            }
             string settingsFile = Path.Combine(stagedFiles, "Settings.json");
             string favoritesFile = Path.Combine(stagedFiles, "Favorites.json");
             if (new FileInfo(settingsFile).Length > 8 * 1024 * 1024 || new FileInfo(favoritesFile).Length > 8 * 1024 * 1024)
                 throw new InvalidDataException("Settings or favorites are too large.");
-            File.WriteAllBytes(settingsFile, SanitizeSettings(File.ReadAllBytes(settingsFile)));
+            File.WriteAllBytes(settingsFile, SanitizeSettings(File.ReadAllBytes(settingsFile), out _));
             File.WriteAllText(favoritesFile, FavoritesStore.Serialize(FavoritesStore.Parse(File.ReadAllText(favoritesFile))));
             string flagFile = Path.Combine(stagedFiles, "Modifications", "ClientSettings", "ClientAppSettings.json");
             if (File.Exists(flagFile))
@@ -236,6 +245,8 @@ public static class BackupService
             else
             {
                 if (!IsAllowed(relative)) { skipped.Add(relative); continue; }
+                if (new FileInfo(entry).Length > MaxEntrySize) throw new InvalidDataException("A backup file is too large: " + relative);
+                if (ContainsCredentialMarker(entry)) { skipped.Add(relative); continue; }
                 files.Add((relative, entry));
                 if (files.Count > MaxFiles) throw new InvalidDataException("There are too many files to back up.");
             }
@@ -271,6 +282,25 @@ public static class BackupService
             lower.Contains("refreshtoken") || lower.Contains("securitytoken");
     }
 
+    private static bool ContainsCredentialMarker(string path)
+    {
+        // Scan in bounded chunks, including the overlap, so a recognizable Roblox
+        // session marker cannot be exported merely because it straddles a buffer.
+        int overlap = MarkerBytes.Max(x => x.Length) - 1;
+        byte[] buffer = new byte[65536 + overlap];
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        int carry = 0, read;
+        while ((read = stream.Read(buffer, carry, 65536)) != 0)
+        {
+            int count = carry + read;
+            foreach (byte[] marker in MarkerBytes)
+                if (buffer.AsSpan(0, count).IndexOf(marker) >= 0) return true;
+            carry = Math.Min(count, overlap);
+            Array.Copy(buffer, count - carry, buffer, 0, carry);
+        }
+        return false;
+    }
+
     private static void EnsureNoReparse(string root, string path)
     {
         root = Path.GetFullPath(root);
@@ -290,17 +320,19 @@ public static class BackupService
         }
     }
 
-    private static byte[] SanitizeSettings(byte[] json)
+    private static byte[] SanitizeSettings(byte[] json, out bool removed)
     {
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Settings must be a JSON object.");
         using var output = new MemoryStream();
+        bool changed = false;
         using (var writer = new Utf8JsonWriter(output, new JsonWriterOptions { Indented = true }))
-            WriteFiltered(writer, document.RootElement);
+            WriteFiltered(writer, document.RootElement, ref changed);
+        removed = changed;
         return output.ToArray();
     }
 
-    private static void WriteFiltered(Utf8JsonWriter writer, JsonElement element)
+    private static void WriteFiltered(Utf8JsonWriter writer, JsonElement element, ref bool removed)
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
@@ -308,17 +340,27 @@ public static class BackupService
             foreach (var property in element.EnumerateObject())
             {
                 string key = property.Name.ToLowerInvariant();
-                if (IsSensitive(key) || key is "cookie" or "cookies" or "accesstoken" or "refreshtoken" or "securitytoken" or "clientsecret" or "apikey") continue;
+                if (IsSensitive(key) || key is "cookie" or "cookies" or "accesstoken" or "refreshtoken" or "securitytoken" or "clientsecret" or "apikey")
+                {
+                    removed = true;
+                    continue;
+                }
                 writer.WritePropertyName(property.Name);
-                WriteFiltered(writer, property.Value);
+                WriteFiltered(writer, property.Value, ref removed);
             }
             writer.WriteEndObject();
         }
         else if (element.ValueKind == JsonValueKind.Array)
         {
             writer.WriteStartArray();
-            foreach (var item in element.EnumerateArray()) WriteFiltered(writer, item);
+            foreach (var item in element.EnumerateArray()) WriteFiltered(writer, item, ref removed);
             writer.WriteEndArray();
+        }
+        else if (element.ValueKind == JsonValueKind.String && CredentialMarkers.Any(marker =>
+                     (element.GetString() ?? "").Contains(marker, StringComparison.OrdinalIgnoreCase)))
+        {
+            removed = true;
+            writer.WriteStringValue("");
         }
         else element.WriteTo(writer);
     }

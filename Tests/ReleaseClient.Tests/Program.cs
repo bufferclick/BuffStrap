@@ -195,9 +195,10 @@ try
         Directory.CreateDirectory(Path.Combine(dir, "Modifications", "ClientSettings"));
         Directory.CreateDirectory(Path.Combine(dir, "LocalStorage"));
         Directory.CreateDirectory(Path.Combine(dir, "CustomThemes"));
-        File.WriteAllText(Path.Combine(dir, "Settings.json"), "{\"CheckForUpdates\":false,\"AllowCookieAccess\":true,\".ROBLOSECURITY\":\"never-export\",\"nested\":{\"password\":\"secret\"}}");
+        File.WriteAllText(Path.Combine(dir, "Settings.json"), "{\"CheckForUpdates\":false,\"AllowCookieAccess\":true,\".ROBLOSECURITY\":\"never-export\",\"nested\":{\"password\":\"secret\",\"args\":\".ROBLOSECURITY=never-export\"}}");
         File.WriteAllText(Path.Combine(dir, "LocalStorage", "RobloxCookies.dat"), "never-export");
         File.WriteAllText(Path.Combine(dir, "Modifications", "cookies.txt"), "never-export");
+        File.WriteAllText(Path.Combine(dir, "Modifications", "script.lua"), new string('a', 65530) + "_|WARNING:-DO-NOT-SHARE-THIS secret");
         File.WriteAllText(Path.Combine(dir, "Modifications", "ClientSettings", "ClientAppSettings.json"), "{\"FFlagTest\":\"True\"}");
         File.WriteAllText(Path.Combine(dir, "Modifications", "mod.txt"), "original mod");
         File.WriteAllText(Path.Combine(dir, "CustomThemes", "theme.txt"), "launcher theme");
@@ -206,10 +207,10 @@ try
         store.Update(data => { data.Accounts.Add(account); data.Games.Add(new FavoriteGame { Name = "Game", PlaceId = 123, AccountId = account.Id }); });
         string backup = Path.Combine(root, "backup-case", "data.zip");
         var created = BackupService.Create(dir, backup);
-        Assert(created.Files >= 5 && created.Skipped.Any(x => x.EndsWith("cookies.txt")));
+        Assert(created.Files >= 5 && created.Skipped.Any(x => x.EndsWith("cookies.txt")) && created.Skipped.Any(x => x.EndsWith("script.lua")));
         using (var zip = ZipFile.OpenRead(backup))
         {
-            Assert(!zip.Entries.Any(x => x.FullName.Contains("cookie", StringComparison.OrdinalIgnoreCase)));
+            Assert(!zip.Entries.Any(x => x.FullName.Contains("cookie", StringComparison.OrdinalIgnoreCase)) && zip.GetEntry("Modifications/script.lua") is null);
             using var reader = new StreamReader(zip.GetEntry("Settings.json")!.Open());
             string contents = reader.ReadToEnd();
             Assert(!contents.Contains("never-export") && !contents.Contains("secret") && contents.Contains("AllowCookieAccess"));

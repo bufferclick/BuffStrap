@@ -45,7 +45,7 @@
         </ui:Card>
 
         <TextBlock Text="Backup and restore" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
-        <controls:OptionControl x:Name="BackupOption" Header="Back up data" Description="Saves last-saved BuffStrap settings, FastFlags, mods, favorites, account labels, profiles and launcher themes. Roblox login/session files are excluded; custom content can still contain personal information.">
+        <controls:OptionControl x:Name="BackupOption" Header="Back up data" Description="Saves last-saved BuffStrap settings, FastFlags, mods, favorites, account labels, profiles and launcher themes. Roblox login/session files are excluded; custom content can still contain personal information or secrets.">
             <ui:Button Content="Create backup" Click="Backup_Click" />
         </controls:OptionControl>
         <controls:OptionControl x:Name="RestoreOption" Header="Restore data" Description="Replaces files contained in a validated backup, keeps extra files, and then closes BuffStrap. Make a backup of your current data first.">

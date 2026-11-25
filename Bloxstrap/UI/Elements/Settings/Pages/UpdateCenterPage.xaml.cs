@@ -132,8 +132,10 @@ namespace Bloxstrap.UI.Elements.Settings.Pages
             try
             {
                 BackupResult result = await Task.Run(() => BackupService.Create(Paths.Base, dialog.FileName));
-                string skipped = result.Skipped.Count == 0 ? "" : $"\n\n{result.Skipped.Count} sensitive-named files or links were skipped.";
-                Frontend.ShowMessageBox($"Backup created with {result.Files} files.{skipped}\n\nReview custom mods and settings before sharing; they may contain personal information.", MessageBoxImage.Information);
+                string skipped = result.Skipped.Count == 0 ? "" : "\n\nExcluded sensitive fields, files, or links:\n" +
+                    String.Join("\n", result.Skipped.Take(10).Select(x => "• " + x)) +
+                    (result.Skipped.Count > 10 ? $"\n…and {result.Skipped.Count - 10} more." : "");
+                Frontend.ShowMessageBox($"Backup created with {result.Files} files.{skipped}\n\nReview custom mods and settings before sharing; they may contain personal information or secrets.", MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
