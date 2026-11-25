@@ -1,0 +1,9 @@
+<Project>
+  <!-- Keep release tags and both Windows executables in sync (for example v1.0.1). -->
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Authors>Buffer</Authors>
+    <Company>Buffer</Company>
+  </PropertyGroup>
+</Project>

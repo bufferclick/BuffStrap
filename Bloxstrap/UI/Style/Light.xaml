@@ -1,7 +1,8 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <BitmapImage x:Key="BuffStrapWordmark" UriSource="pack://application:,,,/Resources/BuffStrapWordmark-Light.png" />
     <SolidColorBrush x:Key="NewTextEditorBackground" Color="White" />
     <SolidColorBrush x:Key="NewTextEditorForeground" Color="Black" />
-    <SolidColorBrush x:Key="NewTextEditorLink" Color="Blue" />
+    <SolidColorBrush x:Key="NewTextEditorLink" Color="#9B454D" />
 
     <Style x:Key="SquareProgressBarStyle" TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
         <Setter Property="Template">

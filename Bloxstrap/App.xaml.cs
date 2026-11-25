@@ -1,4 +1,5 @@
 using Bloxstrap.Distribution;
+using BuffStrap.Release;
 using Microsoft.Win32;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -14,15 +15,15 @@ namespace Bloxstrap
     public partial class App : Application
     {
 #if QA_BUILD
-        public const string ProjectName = "Fishstrap-QA";
+        public const string ProjectName = "BuffStrap-QA";
 #else
-        public const string ProjectName = "Fishstrap";
+        public const string ProjectName = "BuffStrap";
 #endif
-        public const string ProjectOwner = "returnrqt";
-        public const string ProjectRepository = "returnrqt/fishstrap";
-        public const string ProjectDownloadLink = "https://github.com/returnrqt/fishstrap/releases";
+        public const string ProjectOwner = "Buffer";
+        public const string ProjectRepository = ReleaseClient.Repository;
+        public const string ProjectDownloadLink = "https://github.com/" + ProjectRepository + "/releases";
         public const string ProjectHelpLink = "https://github.com/bloxstraplabs/bloxstrap/wiki";
-        public const string ProjectSupportLink = "https://github.com/returnrqt/fishstrap/issues/new";
+        public const string ProjectSupportLink = "https://github.com/" + ProjectRepository;
         public const string ProjectRemoteDataLink = "https://config.fishstrap.app/v1/Data.json";
 
         public const string RobloxPlayerAppName = "RobloxPlayerBeta.exe";
@@ -137,31 +138,6 @@ namespace Bloxstrap
             Terminate(ErrorCode.ERROR_INSTALL_FAILURE);
         }
 
-        public static async Task<GithubRelease?> GetLatestRelease()
-        {
-            const string LOG_IDENT = "App::GetLatestRelease";
-
-            try
-            {
-                Uri githubReleasesUrl = new($"https://api.github.com/repos/{ProjectRepository}/releases/latest");
-                var releaseInfo = await Http.GetJson<GithubRelease>(githubReleasesUrl);
-
-                if (releaseInfo is null || releaseInfo.Assets is null)
-                {
-                    Logger.WriteLine(LOG_IDENT, "Encountered invalid data");
-                    return null;
-                }
-
-                return releaseInfo;
-            }
-            catch (Exception ex)
-            {
-                Logger.WriteException(LOG_IDENT, ex);
-            }
-
-            return null;
-        }
-
         public static void SendLog()
         {
 
@@ -183,7 +159,7 @@ namespace Bloxstrap
             }
         }
 
-        protected override void OnStartup(StartupEventArgs e)
+        protected override async void OnStartup(StartupEventArgs e)
         {
             const string LOG_IDENT = "App::OnStartup";
 
@@ -337,6 +313,18 @@ namespace Bloxstrap
 
                 if (!LaunchSettings.BypassUpdateCheck)
                     Installer.HandleUpgrade();
+
+#if !DEBUG && !QA_BUILD
+                // Check at app startup, not just when Roblox is launched. Helper and
+                // upgrade processes are excluded to avoid interrupting active sessions.
+                if (!LaunchSettings.BypassUpdateCheck && !LaunchSettings.UpgradeFlag.Active &&
+                    !LaunchSettings.BackgroundUpdaterFlag.Active && Settings.Prop.CheckForUpdates &&
+                    await AppUpdater.CheckForUpdatesAsync())
+                {
+                    Terminate();
+                    return;
+                }
+#endif
 
                 Task.Run(App.RemoteData.LoadData); // ok
 

@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using System.Xml.Linq;
 using Bloxstrap.AppData;
@@ -8,12 +8,6 @@ namespace Bloxstrap
 {
     internal class Installer
     {
-        /// <summary>
-        /// Should this version automatically open the release notes page?
-        /// Recommended for major updates only.
-        /// </summary>
-        private const bool OpenReleaseNotes = true;
-
         private static string DesktopShortcut => Path.Combine(Paths.Desktop, $"{App.ProjectName}.lnk");
 
         private static string StartMenuShortcut => Path.Combine(Paths.WindowsStartMenu, $"{App.ProjectName}.lnk");
@@ -451,17 +445,14 @@ namespace Bloxstrap
 
             Filesystem.AssertReadOnly(Paths.Application);
 
-            using (var ipl = new InterProcessLock("AutoUpdater", TimeSpan.FromSeconds(5)))
+            using var ipl = new InterProcessLock("AutoUpdater", TimeSpan.FromSeconds(5));
+            if (!ipl.IsAcquired)
             {
-                if (!ipl.IsAcquired)
-                {
-                    App.Logger.WriteLine(LOG_IDENT, "Failed to update! (Could not obtain singleton mutex)");
-                    return;
-                }
+                App.Logger.WriteLine(LOG_IDENT, "Failed to update! (Could not obtain singleton mutex)");
+                return;
             }
 
-            // prior to 2.8.0, auto-updating was handled with this... bruteforce method
-            // now it's handled with the system mutex you see above, but we need to keep this logic for <2.8.0 versions
+            // Give the previous process time to exit and release the installed executable.
             for (int i = 1; i <= 10; i++)
             {
                 try
@@ -496,174 +487,9 @@ namespace Bloxstrap
                 uninstallKey.SetValueSafe("URLUpdateInfo", App.ProjectDownloadLink);
             }
 
-            // update migrations
-
-            if (existingVer is not null)
-            {
-                if (Utilities.CompareVersions(existingVer, "2.2.0") == VersionComparison.LessThan)
-                {
-                    string path = Path.Combine(Paths.Integrations, "rbxfpsunlocker");
-
-                    try
-                    {
-                        if (Directory.Exists(path))
-                            Directory.Delete(path, true);
-                    }
-                    catch (Exception ex)
-                    {
-                        App.Logger.WriteException(LOG_IDENT, ex);
-                    }
-                }
-
-                if (Utilities.CompareVersions(existingVer, "2.3.0") == VersionComparison.LessThan)
-                {
-                    string injectorLocation = Path.Combine(Paths.Modifications, "dxgi.dll");
-                    string configLocation = Path.Combine(Paths.Modifications, "ReShade.ini");
-
-                    if (File.Exists(injectorLocation))
-                        File.Delete(injectorLocation);
-
-                    if (File.Exists(configLocation))
-                        File.Delete(configLocation);
-                }
-
-
-                if (Utilities.CompareVersions(existingVer, "2.5.0") == VersionComparison.LessThan)
-                {
-                    App.FastFlags.SetValue("DFFlagDisableDPIScale", null);
-                    App.FastFlags.SetValue("DFFlagVariableDPIScale2", null);
-                }
-
-                if (Utilities.CompareVersions(existingVer, "2.6.0") == VersionComparison.LessThan)
-                {
-                    if (App.Settings.Prop.UseDisableAppPatch)
-                    {
-                        try
-                        {
-                            File.Delete(Path.Combine(Paths.Modifications, "ExtraContent\\places\\Mobile.rbxl"));
-                        }
-                        catch (Exception ex)
-                        {
-                            App.Logger.WriteException(LOG_IDENT, ex);
-                        }
-
-                        App.Settings.Prop.EnableActivityTracking = true;
-                    }
-
-                    if (App.Settings.Prop.BootstrapperStyle == BootstrapperStyle.ClassicFluentDialog)
-                        App.Settings.Prop.BootstrapperStyle = BootstrapperStyle.FluentDialog;
-
-                    _ = int.TryParse(App.FastFlags.GetPreset("Rendering.Framerate"), out int x);
-                    if (x == 0)
-                        App.FastFlags.SetPreset("Rendering.Framerate", null);
-                }
-
-                if (Utilities.CompareVersions(existingVer, "2.8.0") == VersionComparison.LessThan)
-                {
-                    if (isAutoUpgrade)
-                    {
-                        if (App.LaunchSettings.Args.Length == 0)
-                            App.LaunchSettings.RobloxLaunchMode = LaunchMode.Player;
-
-                        string? query = App.LaunchSettings.Args.FirstOrDefault(x => x.Contains("roblox"));
-
-                        if (query is not null)
-                        {
-                            App.LaunchSettings.RobloxLaunchMode = LaunchMode.Player;
-                            App.LaunchSettings.RobloxLaunchArgs = query;
-                        }
-                    }
-
-                    string oldDesktopPath = Path.Combine(Paths.Desktop, "Play Roblox.lnk");
-                    string oldStartPath = Path.Combine(Paths.WindowsStartMenu, "Bloxstrap");
-
-                    if (File.Exists(oldDesktopPath))
-                        File.Move(oldDesktopPath, DesktopShortcut, true);
-
-                    if (Directory.Exists(oldStartPath))
-                    {
-                        try
-                        {
-                            Directory.Delete(oldStartPath, true);
-                        }
-                        catch (Exception ex)
-                        {
-                            App.Logger.WriteException(LOG_IDENT, ex);
-                        }
-
-                        Shortcut.Create(Paths.Application, "", StartMenuShortcut);
-                    }
-
-                    Registry.CurrentUser.DeleteSubKeyTree("Software\\Bloxstrap", false);
-
-                    WindowsRegistry.RegisterPlayer();
-
-                    App.FastFlags.SetValue("FFlagDisableNewIGMinDUA", null);
-                    App.FastFlags.SetValue("FFlagFixGraphicsQuality", null);
-                }
-
-                if (Utilities.CompareVersions(existingVer, "2.8.1") == VersionComparison.LessThan)
-                {
-                    // wipe all escape menu flag presets
-                    App.FastFlags.SetValue("FIntNewInGameMenuPercentRollout3", null);
-                    App.FastFlags.SetValue("FFlagEnableInGameMenuControls", null);
-                    App.FastFlags.SetValue("FFlagEnableInGameMenuModernization", null);
-                    App.FastFlags.SetValue("FFlagEnableInGameMenuChrome", null);
-                    App.FastFlags.SetValue("FFlagFixReportButtonCutOff", null);
-                    App.FastFlags.SetValue("FFlagEnableMenuControlsABTest", null);
-                    App.FastFlags.SetValue("FFlagEnableV3MenuABTest3", null);
-                    App.FastFlags.SetValue("FFlagEnableInGameMenuChromeABTest3", null);
-                    App.FastFlags.SetValue("FFlagEnableInGameMenuChromeABTest4", null);
-                }
-
-                if (Utilities.CompareVersions(existingVer, "2.8.2") == VersionComparison.LessThan)
-                {
-                    string robloxDirectory = Path.Combine(Paths.Base, "Roblox");
-
-                    if (Directory.Exists(robloxDirectory))
-                    {
-                        try
-                        {
-                            Directory.Delete(robloxDirectory, true);
-                        }
-                        catch (Exception ex)
-                        {
-                            App.Logger.WriteLine(LOG_IDENT, "Failed to delete the Roblox directory");
-                            App.Logger.WriteException(LOG_IDENT, ex);
-                        }
-                    }
-                }
-
-                if (Utilities.CompareVersions(existingVer, "2.9.0") == VersionComparison.LessThan)
-                {
-                    // move from App.State to App.RobloxState
-                    if (App.State.Prop.GetDeprecatedPlayer() != null)
-                        App.RobloxState.Prop.Player = App.State.Prop.GetDeprecatedPlayer()!;
-
-                    if (App.State.Prop.GetDeprecatedStudio() != null)
-                        App.RobloxState.Prop.Studio = App.State.Prop.GetDeprecatedStudio()!;
-
-                    if (App.State.Prop.GetDeprecatedModManifest() != null)
-                        App.RobloxState.Prop.ModManifest = App.State.Prop.GetDeprecatedModManifest()!;
-                }
-
-                App.Settings.Save();
-                App.FastFlags.Save();
-                App.State.Save();
-                App.RobloxState.Save();
-            }
-
-            if (currentVer is null)
-                return;
-
-            if (isAutoUpgrade)
-            {
-#pragma warning disable CS0162 // Unreachable code detected
-                if (OpenReleaseNotes)
-                    Utilities.ShellExecute($"https://wiki.fishstrap.app/patch-notes/v{currentVer.Replace(".", "-")}");
-#pragma warning restore CS0162 // Unreachable code detected
-            }
-            else
+            // BuffStrap has its own v1 version history and install directory. Do not run
+            // Fishstrap/Bloxstrap's pre-2.x migrations against BuffStrap's 1.x updates.
+            if (!isAutoUpgrade && currentVer is not null)
             {
                 Frontend.ShowMessageBox(
                     string.Format(Strings.InstallChecker_Updated, currentVer),

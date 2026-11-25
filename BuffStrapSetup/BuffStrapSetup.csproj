@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../BuffStrap.Version.props" />
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>BuffStrapSetup</AssemblyName>
+    <Product>BuffStrap Setup</Product>
+    <ApplicationIcon>../Bloxstrap/Bloxstrap.ico</ApplicationIcon>
+    <ApplicationManifest>../Bloxstrap/app.manifest</ApplicationManifest>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/ReleaseClient.cs" Link="ReleaseClient.cs" />
+    <EmbeddedResource Include="../Bloxstrap/Resources/BuffStrapLogo.png" Link="BuffStrapLogo.png" />
+  </ItemGroup>
+</Project>

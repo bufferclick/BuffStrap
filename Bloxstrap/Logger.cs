@@ -1,4 +1,4 @@
-﻿namespace Bloxstrap
+namespace Bloxstrap
 {
     // https://stackoverflow.com/a/53873141/11852173
 
@@ -20,7 +20,9 @@
 
             string directory = useTempDir ? Path.Combine(Paths.TempLogs) : Path.Combine(Paths.Base, "Logs");
             string timestamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmss'Z'");
-            string filename = $"{App.ProjectName}_{timestamp}.log";
+            // A freshly started updater can launch the new process in the same second.
+            // Give each process its own log so that upgrade restarts are not mistaken for duplicates.
+            string filename = $"{App.ProjectName}_{timestamp}_{Environment.ProcessId}.log";
             string location = Path.Combine(directory, filename);
 
             WriteLine(LOG_IDENT, $"Initializing at {location}");
