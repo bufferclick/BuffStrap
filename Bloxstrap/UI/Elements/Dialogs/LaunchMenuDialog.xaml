@@ -64,9 +64,15 @@
                     </StackPanel>
                 </ui:CardAction>
 
+                <ui:CardAction Margin="0,8,0,0" TabIndex="2" Icon="Star24" Command="{Binding LaunchFavoritesCommand, Mode=OneTime}">
+                    <StackPanel>
+                        <TextBlock FontSize="14" Text="Favorites" />
+                    </StackPanel>
+                </ui:CardAction>
+
                 <Border Margin="16" />
 
-                <ui:CardAction Visibility="Visible" Margin="0,8,0,0" TabIndex="2" Icon="Wrench24" Command="{Binding LaunchRobloxStudioCommand, Mode=OneTime}">
+                <ui:CardAction Visibility="Visible" Margin="0,8,0,0" TabIndex="3" Icon="Wrench24" Command="{Binding LaunchRobloxStudioCommand, Mode=OneTime}">
                     <StackPanel>
                         <TextBlock FontSize="14" Text="{x:Static resources:Strings.LaunchMenu_LaunchRobloxStudio}" />
                     </StackPanel>

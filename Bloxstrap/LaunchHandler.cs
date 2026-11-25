@@ -1,4 +1,4 @@
-﻿﻿using System.Windows;
+﻿using System.Windows;
 
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -53,6 +53,16 @@ namespace Bloxstrap
             {
                 App.Logger.WriteLine(LOG_IDENT, "Opening settings");
                 LaunchSettings();
+            }
+            else if (App.LaunchSettings.FavoriteFlag.Active)
+            {
+                if (Guid.TryParse(App.LaunchSettings.FavoriteFlag.Data, out Guid favoriteId))
+                    FavoritesLauncher.Launch(favoriteId);
+                else
+                {
+                    Frontend.ShowMessageBox("The favorite shortcut is invalid.", MessageBoxImage.Warning);
+                    App.Terminate();
+                }
             }
             else if (App.LaunchSettings.WatcherFlag.Active)
             {

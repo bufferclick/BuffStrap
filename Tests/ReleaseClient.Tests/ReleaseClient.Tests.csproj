@@ -7,5 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../Shared/ReleaseClient.cs" Link="ReleaseClient.cs" />
+    <Compile Include="../../Shared/FavoritesStore.cs" Link="FavoritesStore.cs" />
+    <Compile Include="../../Shared/BackupService.cs" Link="BackupService.cs" />
   </ItemGroup>
 </Project>

@@ -26,6 +26,24 @@ By default BuffStrap checks its own GitHub releases when you open the app or lau
 
 Setup and the updater select **BuffStrap.exe** by name, check the expected download size and, when provided by GitHub, its SHA-256 digest, and verify the executable's product and version before running it. They never use an incomplete cached download.
 
+**Settings → Update Center** shows the installed version, the last successful check, release notes, and a list of validated stable releases. You can reinstall a release or select an older one. Back up first: older releases might not understand newer settings. A deliberate rollback turns off automatic updates before starting the old release, so it will not immediately update itself again; re-enable updates in Settings when you are ready. An older release may also ask you to confirm the downgrade itself.
+
+## Favorites and accounts
+
+Open **Favorites** from the launch menu. Add a game using its Roblox game link or place ID, optionally give it a folder and an account label, and search or edit your list. Choose **Shortcut** to create a shortcut on the Desktop, in the Start menu, or both. Shortcuts reference the saved favorite, so later edits and account assignments still apply. Recently Played records confirmed joins while BuffStrap activity tracking is enabled; it stores at most 50 entries locally.
+
+Account entries are **username labels, not saved logins**. Roblox's documented [account switcher](https://en.help.roblox.com/hc/en-us/articles/21037888001044-Account-Switching) operates on the web and does not provide a supported launcher API for selecting a session. For an assigned favorite, BuffStrap opens the official game page and asks you to sign in or switch to the indicated account and press Play there. It cannot verify the browser account or perform that extra Play click. Unassigned favorites launch using the current Roblox session. BuffStrap does not ask for or save passwords or account session tokens in Favorites.
+
+## Backup, restore and repair
+
+**Settings → Update Center** can back up last-saved settings, FastFlags, mods, Favorites and account labels, profiles, and custom launcher themes. The archive excludes Roblox's login/session storage and skips links and files with sensitive names. Custom mods and integration settings can contain user-entered information, so inspect them before sharing a backup. Restore validates paths, sizes and checksums, replaces the files in the archive, keeps extra files, and closes BuffStrap so the restored configuration loads on restart. Make a backup of your current data first and close Roblox and other BuffStrap processes before restoring.
+
+The repair dialog checks common installation registrations, Player launch links, shortcuts and the Roblox Player executable, displays its findings, and asks before applying selected fixes. A selected Roblox file repair is scheduled for the next launch and may need a network connection and close a running player. It keeps settings, favorites, mods and Roblox login data. This is not a full integrity scan; if BuffStrap's own executable is missing or invalid, reinstall BuffStrap using the official setup or Update Center.
+
+## Roblox app themes
+
+BuffStrap's existing Roblox light/dark setting is retained. Set it to **Default** to leave Roblox's own theme selection alone, including any curated themes Roblox makes available to your account. Roblox's [desktop theme settings](https://en.help.roblox.com/hc/en-us/articles/360022922852-Changing-Your-App-Theme-Light-Dark-and-System) do not document an API for arbitrary custom themes, so BuffStrap does not claim to apply a custom theme inside Roblox itself. Custom bootstrapper themes are separate and affect BuffStrap's launch window only.
+
 ## Building and releasing
 
 The solution uses the .NET 6 SDK and the WPF UI submodule. On Windows:

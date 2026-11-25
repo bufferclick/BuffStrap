@@ -6,46 +6,51 @@ namespace Bloxstrap
 {
     internal static class AppUpdater
     {
-        /// <summary>
-        /// Checks before opening the menu, settings, or Roblox. Returns true only
-        /// after the verified update has started and the current process should exit.
-        /// </summary>
+        /// <summary>Checks at startup; a failed check never blocks Roblox.</summary>
         public static async Task<bool> CheckForUpdatesAsync()
         {
             const string LOG_IDENT = "AppUpdater::CheckForUpdates";
-
-            // Windows cannot replace the installed executable while another instance uses it.
-            // Try again on a later launch instead of disrupting a watcher or active session.
-            if (Process.GetProcessesByName(App.ProjectName).Length > 1)
+            if (OtherInstanceRunning())
             {
                 App.Logger.WriteLine(LOG_IDENT, "Another BuffStrap instance is running; postponing the update.");
                 return false;
             }
-
-            var client = new ReleaseClient(App.HttpClient);
-            ReleaseInfo release;
             try
             {
                 using var lookupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
-                release = await client.GetLatestReleaseAsync(lookupTimeout.Token);
-                if (!ReleaseClient.IsNewer(release, new Version(App.Version)))
-                {
-                    App.Logger.WriteLine(LOG_IDENT, "Already on the latest version.");
-                    return false;
-                }
+                ReleaseInfo release = await new ReleaseClient(App.HttpClient).GetLatestReleaseAsync(lookupTimeout.Token);
+                UpdateCheckCache.Record(release);
+                if (!ReleaseClient.IsNewer(release, new Version(App.Version))) return false;
+                return await InstallReleaseAsync(release, manual: false);
             }
             catch (Exception ex)
             {
-                // Being offline or a missing release must never prevent Roblox from launching.
                 App.Logger.WriteLine(LOG_IDENT, "Could not check for a release; continuing with the installed version.");
                 App.Logger.WriteException(LOG_IDENT, ex);
+                return false;
+            }
+        }
+
+        public static bool OtherInstanceRunning() => Process.GetProcessesByName(App.ProjectName).Length > 1;
+
+        /// <summary>
+        /// Uses the same verified download path for manual upgrades, reinstalls and
+        /// rollbacks. Older versions know CheckForUpdates, so disabling that persisted
+        /// setting before a rollback also prevents v1.0.0 from immediately undoing it.
+        /// </summary>
+        public static async Task<bool> InstallReleaseAsync(ReleaseInfo release, bool manual)
+        {
+            const string LOG_IDENT = "AppUpdater::InstallRelease";
+            if (OtherInstanceRunning())
+            {
+                if (manual) Frontend.ShowMessageBox("Close other BuffStrap windows and any active Roblox session, then try again.", MessageBoxImage.Information);
                 return false;
             }
 
             using var updateLock = new InterProcessLock("AutoUpdater");
             if (!updateLock.IsAcquired)
             {
-                App.Logger.WriteLine(LOG_IDENT, "Another updater is already running.");
+                if (manual) Frontend.ShowMessageBox("Another update is already in progress.", MessageBoxImage.Information);
                 return false;
             }
 
@@ -55,58 +60,75 @@ namespace Bloxstrap
             UpdateWindow? window = null;
             string? downloadedPath = null;
             bool started = false;
-
+            bool previousAutoUpdate = App.Settings.Prop.CheckForUpdates;
+            bool rollback = manual && release.Version < new Version(App.Version);
+            bool changedAutoUpdate = false;
             try
             {
-                if (!App.LaunchSettings.QuietFlag.Active)
+                if (manual || !App.LaunchSettings.QuietFlag.Active)
                 {
                     window = new UpdateWindow(release.TagName, cancellation);
                     window.Show();
                 }
-
                 var progress = new Progress<double>(value =>
                 {
-                    if (window?.IsVisible == true)
-                        window.SetProgress(value);
+                    if (window?.IsVisible == true) window.SetProgress(value);
                 });
+                var client = new ReleaseClient(App.HttpClient);
                 downloadedPath = await client.DownloadAsync(release, Paths.TempUpdates, progress, timeout.Token);
                 ReleaseClient.VerifyExecutableVersion(downloadedPath, release);
                 timeout.Token.ThrowIfCancellationRequested();
 
                 var startInfo = new ProcessStartInfo { FileName = downloadedPath, UseShellExecute = false };
-                // A Roblox protocol URL must stay first for LaunchSettings to recognise it.
-                foreach (string arg in App.LaunchSettings.Args)
-                    startInfo.ArgumentList.Add(arg);
+                if (manual)
+                    startInfo.ArgumentList.Add("-settings");
+                else
+                    foreach (string arg in App.LaunchSettings.Args) startInfo.ArgumentList.Add(arg);
                 startInfo.ArgumentList.Add("-upgrade");
 
+                if (rollback)
+                {
+                    App.Settings.Prop.CheckForUpdates = false;
+                    changedAutoUpdate = true;
+                }
                 App.Settings.Save();
+                if (rollback)
+                {
+                    // JsonManager.Save reports errors rather than throwing. Do not start
+                    // a rollback unless the older updater will really see this setting.
+                    var persisted = JsonSerializer.Deserialize<Settings>(File.ReadAllText(App.Settings.FileLocation));
+                    if (persisted is null || persisted.CheckForUpdates)
+                        throw new IOException("Could not save the setting that prevents automatic updates after rollback.");
+                }
                 if (Process.Start(startInfo) is null)
-                    throw new InvalidOperationException("Windows could not start the update.");
-
+                    throw new InvalidOperationException("Windows could not start the selected release.");
                 started = true;
-                App.Logger.WriteLine(LOG_IDENT, $"Started verified update {release.TagName}.");
+                App.Logger.WriteLine(LOG_IDENT, $"Started verified release {release.TagName}.");
                 return true;
             }
             catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
             {
-                App.Logger.WriteLine(LOG_IDENT, "The update was cancelled; continuing with the installed version.");
+                App.Logger.WriteLine(LOG_IDENT, "The update was cancelled.");
             }
             catch (Exception ex)
             {
-                App.Logger.WriteLine(LOG_IDENT, "The update failed; continuing with the installed version.");
                 App.Logger.WriteException(LOG_IDENT, ex);
-                Frontend.ShowMessageBox(string.Format(Strings.Bootstrapper_AutoUpdateFailed, release.TagName), MessageBoxImage.Information);
+                string message = manual ? $"Could not install {release.TagName}.\n\n{ex.Message}" : string.Format(Strings.Bootstrapper_AutoUpdateFailed, release.TagName);
+                Frontend.ShowMessageBox(message, MessageBoxImage.Warning);
             }
             finally
             {
-                if (window?.IsVisible == true)
-                    window.Finish();
+                if (window?.IsVisible == true) window.Finish();
+                if (!started && changedAutoUpdate)
+                {
+                    App.Settings.Prop.CheckForUpdates = previousAutoUpdate;
+                    App.Settings.Save();
+                }
                 if (!started && downloadedPath is not null)
                 {
                     try { Directory.Delete(Path.GetDirectoryName(downloadedPath)!, true); } catch { }
                 }
             }
-
             return false;
         }
     }

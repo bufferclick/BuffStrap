@@ -22,6 +22,7 @@ public sealed class ReleaseClient
     public const string Repository = "bufferclick/BuffStrap";
     public const string ExecutableName = "BuffStrap.exe";
     public const string LatestReleaseUrl = "https://api.github.com/repos/" + Repository + "/releases/latest";
+    public const string ReleasesUrl = "https://api.github.com/repos/" + Repository + "/releases";
     private const long MaximumDownloadSize = 512L * 1024 * 1024;
     private static readonly Regex VersionTag = new(@"^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$", RegexOptions.CultureInvariant);
     private readonly HttpClient _httpClient;
@@ -34,6 +35,32 @@ public sealed class ReleaseClient
         response.EnsureSuccessStatusCode();
         string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return ParseRelease(json);
+    }
+
+    /// <summary>Lists up to 300 recent releases, ignoring drafts, previews and releases
+    /// without a valid official app asset. The same validation applies to rollback downloads.</summary>
+    public async Task<IReadOnlyList<ReleaseInfo>> GetStableReleasesAsync(CancellationToken cancellationToken = default)
+    {
+        var releases = new List<ReleaseInfo>();
+        for (int page = 1; page <= 3; page++)
+        {
+            using var response = await _httpClient.GetAsync($"{ReleasesUrl}?per_page=100&page={page}", cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+                throw new InvalidDataException("The release list was not an array.");
+
+            foreach (var item in document.RootElement.EnumerateArray())
+            {
+                try { releases.Add(ParseRelease(item.GetRawText())); }
+                catch (Exception ex) when (ex is InvalidDataException or JsonException or ArgumentException) { }
+            }
+            if (document.RootElement.GetArrayLength() < 100)
+                break;
+        }
+        return releases.GroupBy(x => x.TagName, StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.First()).OrderByDescending(x => x.Version).ToArray();
     }
 
     public static ReleaseInfo ParseRelease(string json)
@@ -70,7 +97,11 @@ public sealed class ReleaseClient
             sha256 = asset.Digest[7..];
         }
 
-        return new ReleaseInfo(release.TagName!, version, uri, asset.Size, sha256);
+        // Keep notes bounded: release notes are displayed as plain text, never executed.
+        string notes = release.Body ?? "";
+        if (notes.Length > 32000)
+            notes = notes[..32000];
+        return new ReleaseInfo(release.TagName!, version, uri, asset.Size, sha256, notes, release.PublishedAt);
     }
 
     /// <summary>
@@ -153,6 +184,8 @@ public sealed class ReleaseClient
         [JsonPropertyName("tag_name")] public string? TagName { get; set; }
         [JsonPropertyName("draft")] public bool Draft { get; set; }
         [JsonPropertyName("prerelease")] public bool Prerelease { get; set; }
+        [JsonPropertyName("body")] public string? Body { get; set; }
+        [JsonPropertyName("published_at")] public DateTimeOffset? PublishedAt { get; set; }
         [JsonPropertyName("assets")] public List<GitHubAsset>? Assets { get; set; }
     }
 
@@ -166,4 +199,8 @@ public sealed class ReleaseClient
     }
 }
 
-public sealed record ReleaseInfo(string TagName, Version Version, Uri DownloadUri, long Size, string? Sha256);
+public sealed record ReleaseInfo(string TagName, Version Version, Uri DownloadUri, long Size, string? Sha256,
+    string Notes = "", DateTimeOffset? PublishedAt = null)
+{
+    public override string ToString() => TagName;
+}
