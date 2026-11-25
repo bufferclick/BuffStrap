@@ -11,29 +11,23 @@ namespace Bloxstrap
         {
             try
             {
-                FavoritesData data = Store.Load();
-                FavoriteGame? game = data.Games.FirstOrDefault(x => x.Id == id);
-                if (game is null)
-                    throw new InvalidOperationException("This favorite no longer exists. Its shortcut can be removed.");
-
-                if (game.AccountId is Guid accountId)
+                FavoriteLaunchPlan plan = FavoriteLaunchPlan.Resolve(Store.Load(), id);
+                if (plan.RequiresBrowserSignIn)
                 {
-                    var account = data.Accounts.FirstOrDefault(x => x.Id == accountId)
-                        ?? throw new InvalidOperationException("The account label assigned to this favorite is missing.");
                     // Roblox does not offer a documented API for a launcher to select a
                     // web account. Never silently launch using a different account.
                     var answer = Frontend.ShowMessageBox(
-                        $"This favorite is assigned to {account.Username}. Roblox controls sign-in.\n\n" +
+                        $"This favorite is assigned to {plan.AssignedUsername}. Roblox controls sign-in.\n\n" +
                         "Open the official game page, sign in or switch to that account, and press Play there. " +
                         "BuffStrap cannot verify or switch the browser account for you.",
                         MessageBoxImage.Information, MessageBoxButton.OKCancel);
                     if (answer == MessageBoxResult.OK)
-                        Utilities.ShellExecute($"https://www.roblox.com/games/{game.PlaceId}/");
+                        Utilities.ShellExecute(plan.WebsiteUrl);
                     App.Terminate();
                     return;
                 }
 
-                App.LaunchSettings.RobloxLaunchArgs = $"roblox://experiences/start?placeId={game.PlaceId}";
+                App.LaunchSettings.RobloxLaunchArgs = plan.PlayerUrl;
                 LaunchHandler.LaunchRoblox(LaunchMode.Player);
             }
             catch (Exception ex)

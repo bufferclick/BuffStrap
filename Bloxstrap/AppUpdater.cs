@@ -86,20 +86,8 @@ namespace Bloxstrap
                     foreach (string arg in App.LaunchSettings.Args) startInfo.ArgumentList.Add(arg);
                 startInfo.ArgumentList.Add("-upgrade");
 
-                if (rollback)
-                {
-                    App.Settings.Prop.CheckForUpdates = false;
-                    changedAutoUpdate = true;
-                }
-                App.Settings.Save();
-                if (rollback)
-                {
-                    // JsonManager.Save reports errors rather than throwing. Do not start
-                    // a rollback unless the older updater will really see this setting.
-                    var persisted = JsonSerializer.Deserialize<Settings>(File.ReadAllText(App.Settings.FileLocation));
-                    if (persisted is null || persisted.CheckForUpdates)
-                        throw new IOException("Could not save the setting that prevents automatic updates after rollback.");
-                }
+                changedAutoUpdate = rollback;
+                SaveSettingsForInstall(rollback);
                 if (Process.Start(startInfo) is null)
                     throw new InvalidOperationException("Windows could not start the selected release.");
                 started = true;
@@ -130,6 +118,20 @@ namespace Bloxstrap
                 }
             }
             return false;
+        }
+
+        internal static void SaveSettingsForInstall(bool rollback)
+        {
+            if (rollback) App.Settings.Prop.CheckForUpdates = false;
+            App.Settings.Save();
+            if (rollback)
+            {
+                // JsonManager.Save reports errors rather than throwing. Do not start
+                // a rollback unless even v1.0.0 will see automatic updates disabled.
+                var persisted = JsonSerializer.Deserialize<Settings>(File.ReadAllText(App.Settings.FileLocation));
+                if (persisted is null || persisted.CheckForUpdates)
+                    throw new IOException("Could not save the setting that prevents automatic updates after rollback.");
+            }
         }
     }
 }

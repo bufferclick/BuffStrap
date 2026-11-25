@@ -9,9 +9,10 @@ namespace Bloxstrap.Utility
             if (!desktop && !startMenu) throw new ArgumentException("Choose at least one shortcut location.");
             string clean = String.Concat(game.Name.Split(Path.GetInvalidFileNameChars())).Trim().TrimEnd('.');
             if (clean.Length > 70) clean = clean[..70].Trim();
+            if (clean.Length > 0 && Char.IsHighSurrogate(clean[^1])) clean = clean[..^1];
             if (String.IsNullOrWhiteSpace(clean)) clean = "Roblox game";
-            // The id prevents two favorites with the same name from replacing one another.
-            string fileName = $"{clean} (BuffStrap-{game.Id.ToString("N")[..8]}).lnk";
+            // The full id prevents two favorites with the same name from replacing one another.
+            string fileName = $"{clean} (BuffStrap-{game.Id:N}).lnk";
             var paths = new List<string>();
             if (desktop) paths.Add(Path.Combine(Paths.Desktop, fileName));
             if (startMenu) paths.Add(Path.Combine(Paths.WindowsStartMenu, "BuffStrap Favorites", fileName));

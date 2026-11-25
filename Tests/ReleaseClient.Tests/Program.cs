@@ -33,7 +33,16 @@ string Manifest(string tag = "v1.7.2", string? url = null, long size = 6, string
 async Task Test(string name, Func<Task> body)
 {
     try { await body(); Console.WriteLine("PASS " + name); }
-    catch (Exception ex) { failures++; Console.Error.WriteLine($"FAIL {name}: {ex}"); }
+    catch (Exception ex)
+    {
+        failures++;
+        Console.Error.WriteLine($"FAIL {name}: {ex}");
+        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+        {
+            string details = ($"{name}: {ex}").Replace("%", "%25").Replace("\r", "%0D").Replace("\n", "%0A");
+            Console.WriteLine("::error title=Automated test failed::" + details);
+        }
+    }
 }
 void Assert(bool condition, string message = "Assertion failed")
 {
@@ -139,6 +148,21 @@ try
         var releases = await new ReleaseClient(http).GetStableReleasesAsync();
         Assert(releases.Count == 2 && releases[0].TagName == "v1.8.0" && releases[1].TagName == "v1.0.0");
         Assert(releases[0].Notes == "Changes");
+    });
+    await Test("assigned favorites require the Roblox website and never silently use another session", () =>
+    {
+        var account = new FavoriteAccount { Username = "Example_User" };
+        var assigned = new FavoriteGame { Name = "Assigned", PlaceId = 123, AccountId = account.Id };
+        var unassigned = new FavoriteGame { Name = "Current", PlaceId = 456 };
+        var data = new FavoritesData { Accounts = new() { account }, Games = new() { assigned, unassigned } };
+        var first = FavoriteLaunchPlan.Resolve(data, assigned.Id);
+        var second = FavoriteLaunchPlan.Resolve(data, unassigned.Id);
+        Assert(first.RequiresBrowserSignIn && first.AssignedUsername == "Example_User" && first.WebsiteUrl == "https://www.roblox.com/games/123/");
+        Assert(!second.RequiresBrowserSignIn && second.PlayerUrl == "roblox://experiences/start?placeId=456");
+        data.Accounts.Clear();
+        try { FavoriteLaunchPlan.Resolve(data, assigned.Id); throw new Exception("A missing account silently fell back to the current session."); }
+        catch (InvalidDataException) { }
+        return Task.CompletedTask;
     });
     await Test("favorites preserve concurrent edits and track only the newest 50 joins", async () =>
     {

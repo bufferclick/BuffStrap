@@ -43,6 +43,24 @@ public sealed class FavoritesData
     public List<RecentGame> Recent { get; set; } = new();
 }
 
+/// <summary>An assigned account must never silently fall back to another session.</summary>
+public sealed record FavoriteLaunchPlan(long PlaceId, string? AssignedUsername)
+{
+    public bool RequiresBrowserSignIn => AssignedUsername is not null;
+    public string WebsiteUrl => $"https://www.roblox.com/games/{PlaceId}/";
+    public string PlayerUrl => $"roblox://experiences/start?placeId={PlaceId}";
+
+    public static FavoriteLaunchPlan Resolve(FavoritesData data, Guid id)
+    {
+        FavoritesStore.Validate(data);
+        var game = data.Games.FirstOrDefault(x => x.Id == id)
+            ?? throw new InvalidOperationException("This favorite no longer exists. Its shortcut can be removed.");
+        string? username = game.AccountId is Guid accountId
+            ? data.Accounts.Single(x => x.Id == accountId).Username : null;
+        return new FavoriteLaunchPlan(game.PlaceId, username);
+    }
+}
+
 /// <summary>
 /// Reload-modify-save under a cross-process mutex, so an activity watcher and a
 /// favorites window cannot silently overwrite each other's changes.

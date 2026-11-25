@@ -2,6 +2,8 @@ using System.Reflection;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using BuffStrap.Favorites;
 using Bloxstrap;
 using Bloxstrap.Enums;
@@ -47,7 +49,23 @@ internal static class Program
             search.Text = "";
             folder.SelectedItem = "Folder: Friends";
             Assert(list.Items.Count == 1, "Folder filtering did not work.");
+            // Exercise templates and bindings without showing an interactive window.
+            var visual = (UIElement)favorites.Content;
+            visual.Measure(new Size(900, 650));
+            visual.Arrange(new Rect(0, 0, 900, 650));
+            visual.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(900, 650, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(visual);
+            Assert(ContainsText(visual, "Alpha game"), "A favorite row did not render its bound name.");
+            ((TextBox)favorites.FindName("AccountNameBox")).Text = "Second_User";
+            typeof(FavoritesWindow).GetMethod("AddAccount_Click", BindingFlags.NonPublic | BindingFlags.Instance)!
+                .Invoke(favorites, new object[] { favorites, new RoutedEventArgs() });
+            Assert(store.Load().Accounts.Count == 2, "Adding an account label did not persist it.");
             Assert(((TextBox)editor.FindName("NameBox")).Text == "Alpha game", "The favorite editor did not load the game.");
+            var gameShortcutType = typeof(App).Assembly.GetType("Bloxstrap.Utility.GameShortcut", throwOnError: true)!;
+            var parsePlace = gameShortcutType.GetMethod("ParsePlaceId", BindingFlags.Public | BindingFlags.Static)!;
+            Assert((long?)parsePlace.Invoke(null, new object[] { "https://www.roblox.com/games/1234/example" }) == 1234,
+                "A Roblox game link did not resolve to its place ID.");
             var versionOption = (Bloxstrap.UI.Elements.Controls.OptionControl)updates.FindName("InstalledVersionOption");
             Assert(((TextBlock)versionOption.InnerContent).Text.StartsWith("v"), "Update Center did not show the version.");
 
@@ -61,25 +79,49 @@ internal static class Program
             Assert(link.ExtraData.EnvironmentVariableDataBlock.TargetUnicode == Path.Combine(root, "BuffStrap.exe"), "Shortcut pointed to the wrong launcher.");
             var getPaths = shortcutType.GetMethod("GetPaths", BindingFlags.Public | BindingFlags.Static)!;
             var choices = (IReadOnlyList<string>)getPaths.Invoke(null, new object[] { first, true, true })!;
-            Assert(choices.Count == 2 && choices[0] != choices[1], "Desktop and Start menu were not both selected.");
+            var desktop = (IReadOnlyList<string>)getPaths.Invoke(null, new object[] { first, true, false })!;
+            var startMenu = (IReadOnlyList<string>)getPaths.Invoke(null, new object[] { first, false, true })!;
+            Assert(choices.Count == 2 && choices[0] == desktop.Single() && choices[1] == startMenu.Single() && choices[0] != choices[1],
+                "Desktop, Start menu and both shortcut choices did not work.");
 
             var repairType = typeof(App).Assembly.GetType("Bloxstrap.InstallationRepair", throwOnError: true)!;
             repairType.GetMethod("SchedulePlayerReinstall", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, null);
             using var state = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "State.json")));
             Assert(state.RootElement.GetProperty("ForceReinstall").GetBoolean(), "The repair was not scheduled.");
-            Console.WriteLine("PASS WPF page construction, favorite search/folders, shortcuts and repair scheduling");
+
+            // Older releases already honor CheckForUpdates, so this persisted flag
+            // must be false before starting a deliberate rollback.
+            var updater = typeof(App).Assembly.GetType("Bloxstrap.AppUpdater", throwOnError: true)!;
+            App.Settings.Prop.CheckForUpdates = true;
+            updater.GetMethod("SaveSettingsForInstall", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, new object[] { true });
+            using var savedSettings = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "Settings.json")));
+            Assert(!savedSettings.RootElement.GetProperty("CheckForUpdates").GetBoolean(), "Rollback did not persist the auto-update guard.");
+            Console.WriteLine("PASS WPF pages, favorites, shortcuts, repair scheduling and rollback guard");
             app.Shutdown();
             return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine("FAIL UI smoke test: " + ex);
+            if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+            {
+                string details = ex.ToString().Replace("%", "%25").Replace("\r", "%0D").Replace("\n", "%0A");
+                Console.WriteLine("::error title=WPF smoke test failed::" + details);
+            }
             return 1;
         }
         finally
         {
             try { Directory.Delete(root, true); } catch { }
         }
+    }
+
+    private static bool ContainsText(DependencyObject root, string text)
+    {
+        if (root is TextBlock block && block.Text == text) return true;
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            if (ContainsText(VisualTreeHelper.GetChild(root, i), text)) return true;
+        return false;
     }
 
     private static void Assert(bool condition, string message)

@@ -57,6 +57,11 @@ namespace Bloxstrap.UI.Elements.Dialogs
                 Frontend.ShowMessageBox("Select at least one repair.", MessageBoxImage.Information);
                 return;
             }
+            if (PlayerCheck.IsChecked == true && (Utilities.IsRobloxRunning() || AppUpdater.OtherInstanceRunning()))
+            {
+                Frontend.ShowMessageBox("Close Roblox and other BuffStrap processes before scheduling a Player reinstall, then try again.", MessageBoxImage.Information);
+                return;
+            }
             string summary = String.Join("\n", work.Select(x => "• " + x.Name));
             if (Frontend.ShowMessageBox("Apply these repairs?\n\n" + summary +
                 "\n\nPlayer links may replace another launcher's links. Roblox reinstall needs a connection and may close a running player.",
