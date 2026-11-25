@@ -59,6 +59,11 @@ namespace Bloxstrap.UI.Elements.Dialogs
         {
             try
             {
+                if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
+                {
+                    Frontend.ShowMessageBox("Account sign-in requires Windows 10 version 1809 or newer and the WebView2 Runtime.", MessageBoxImage.Warning);
+                    return;
+                }
                 var login = new RobloxLoginWindow(expectedId) { Owner = this };
                 login.ShowDialog();
                 await RefreshAsync();

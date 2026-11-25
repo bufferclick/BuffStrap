@@ -1,9 +1,14 @@
 using System.Reflection;
+using System.Runtime.Versioning;
 using System.IO;
+using System.Net;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
 using BuffStrap.Favorites;
 using Bloxstrap;
 using Bloxstrap.Enums;
@@ -19,11 +24,16 @@ internal static class Program
         Directory.CreateDirectory(root);
         try
         {
+            if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
+                throw new PlatformNotSupportedException("The account sign-in test requires Windows 10 version 1809 or newer.");
             var paths = typeof(App).Assembly.GetType("Bloxstrap.Paths", throwOnError: true)!;
             paths.GetMethod("Initialize", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, new object[] { root });
             App.Settings.Prop.Theme = Theme.Dark;
             var app = new App();
             app.InitializeComponent();
+            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var launchSettings = new LaunchSettings(Array.Empty<string>());
+            typeof(App).GetProperty("LaunchSettings")!.GetSetMethod(true)!.Invoke(null, new object[] { launchSettings });
 
             var store = new FavoritesStore(Path.Combine(root, "Favorites.json"));
             var account = new FavoriteAccount { Username = "Example_User" };
@@ -74,6 +84,7 @@ internal static class Program
             var browser = login.FindName("Browser")!;
             Assert(browser.GetType().GetProperty("Source")!.GetValue(browser) is null,
                 "The login browser navigated before its isolated profile was configured.");
+            VerifyPrivateWebViews(login, root);
             Assert(((TextBox)editor.FindName("NameBox")).Text == "Alpha game", "The favorite editor did not load the game.");
             var gameShortcutType = typeof(App).Assembly.GetType("Bloxstrap.Utility.GameShortcut", throwOnError: true)!;
             var parsePlace = gameShortcutType.GetMethod("ParsePlaceId", BindingFlags.Public | BindingFlags.Static)!;
@@ -119,6 +130,73 @@ internal static class Program
                 held.Dispose();
                 using var released = waiting.GetAwaiter().GetResult();
             }
+            // End-to-end account service with a fake Roblox API, the real vault,
+            // and the real favorites store: reconnecting keeps favorite IDs intact.
+            const string loginSession = "synthetic-signin-session";
+            using (var signInHttp = new HttpClient(new CallbackHandler(request =>
+            {
+                Assert(request.RequestUri!.Host == "users.roblox.com" && request.Headers.GetValues("Cookie").Single() == ".ROBLOSECURITY=" + loginSession,
+                    "Sign-in used the wrong session or host.");
+                return JsonReply(HttpStatusCode.OK, "{\"id\":42,\"name\":\"Example_User\",\"displayName\":\"Updated Display\"}");
+            })))
+            {
+                var connect = sessionsType.GetMethod("ConnectAsync", BindingFlags.Static | BindingFlags.Public)!;
+                Pump((Task)connect.Invoke(null, new object?[] { loginSession, account.Id, CancellationToken.None, new RobloxAccountClient(signInHttp) })!);
+            }
+            Assert(store.Load().Accounts.Single().DisplayName == "Updated Display" && store.Load().Games.Single(x => x.Id == first.Id).AccountId == account.Id,
+                "Reconnecting lost account identity or favorite assignments.");
+            Assert((string)readSession.Invoke(vault, new object[] { account.Id })! == loginSession &&
+                !File.ReadAllText(Path.Combine(root, "Favorites.json")).Contains(loginSession), "The session was not kept in the protected vault.");
+            int authSteps = 0;
+            using (var launchHttp = new HttpClient(new CallbackHandler(request =>
+            {
+                authSteps++;
+                if (authSteps == 1)
+                {
+                    Assert(request.Headers.GetValues("Cookie").Single() == ".ROBLOSECURITY=" + loginSession, "The selected account session was not used.");
+                    return JsonReply(HttpStatusCode.OK, "{\"id\":42,\"name\":\"Example_User\",\"displayName\":\"Updated Display\"}", "rotated-login-session");
+                }
+                if (authSteps == 2)
+                {
+                    Assert(request.Headers.GetValues("Cookie").Single() == ".ROBLOSECURITY=rotated-login-session", "Rotated session was not used.");
+                    return JsonReply(HttpStatusCode.OK, "{\"clientAssertion\":\"synthetic-assertion\"}");
+                }
+                if (authSteps == 3)
+                {
+                    var challenge = JsonReply(HttpStatusCode.Forbidden, "{}");
+                    challenge.Headers.TryAddWithoutValidation("x-csrf-token", "synthetic-csrf");
+                    return challenge;
+                }
+                if (authSteps == 4)
+                {
+                    var response = JsonReply(HttpStatusCode.OK, "{}", "rotated-ticket-session");
+                    response.Headers.TryAddWithoutValidation("rbx-authentication-ticket", "synthetic-ticket");
+                    return response;
+                }
+                throw new InvalidOperationException("Unexpected authenticated request.");
+            })))
+            {
+                var mint = sessionsType.GetMethod("CreateLaunchTicketAsync", BindingFlags.Static | BindingFlags.Public)!;
+                string ticket = Pump((Task<string>)mint.Invoke(null, new object?[] { account.Id, CancellationToken.None, new RobloxAccountClient(launchHttp) })!);
+                Assert(ticket == "synthetic-ticket" && authSteps == 4, "The account did not produce the expected ticket.");
+            }
+            Assert((string)readSession.Invoke(vault, new object[] { account.Id })! == "rotated-ticket-session", "The rotated session was not saved.");
+            int wrongSteps = 0;
+            using (var wrongHttp = new HttpClient(new CallbackHandler(request =>
+            {
+                wrongSteps++;
+                return JsonReply(HttpStatusCode.OK, "{\"id\":99,\"name\":\"Other_User\",\"displayName\":\"Other\"}");
+            })))
+            {
+                var mint = sessionsType.GetMethod("CreateLaunchTicketAsync", BindingFlags.Static | BindingFlags.Public)!;
+                try
+                {
+                    Pump((Task<string>)mint.Invoke(null, new object?[] { account.Id, CancellationToken.None, new RobloxAccountClient(wrongHttp) })!);
+                    throw new InvalidOperationException("A different account's session was allowed to launch.");
+                }
+                catch (RobloxAccountException) { }
+                Assert(wrongSteps == 1, "A ticket was requested for the wrong account.");
+            }
             var redact = typeof(Logger).GetMethod("RedactSecrets", BindingFlags.Static | BindingFlags.NonPublic)!;
             string redacted = (string)redact.Invoke(null, new object[] { "roblox-player:1+gameinfo:ticket-secret+foo .ROBLOSECURITY=cookie-secret; x-csrf-token: csrf-secret" })!;
             Assert(!redacted.Contains("ticket-secret") && !redacted.Contains("cookie-secret") && !redacted.Contains("csrf-secret"),
@@ -159,8 +237,6 @@ internal static class Program
             Assert(state.RootElement.GetProperty("ForcePlayerRepair").GetBoolean(), "The Player repair was not scheduled.");
 
             // A Studio or background update must not consume a Player-only repair.
-            var launchSettings = new LaunchSettings(Array.Empty<string>());
-            typeof(App).GetProperty("LaunchSettings")!.GetSetMethod(true)!.Invoke(null, new object[] { launchSettings });
             App.Settings.Prop.StaticDirectory = true;
             var playerData = App.Distribution.RobloxPlayerData;
             var studioData = App.Distribution.RobloxStudioData;
@@ -204,6 +280,125 @@ internal static class Program
         finally
         {
             try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    [SupportedOSPlatform("windows10.0.17763.0")]
+    private static void VerifyPrivateWebViews(RobloxLoginWindow first, string root)
+    {
+        try
+        {
+            string version = CoreWebView2Environment.GetAvailableBrowserVersionString();
+            if (String.IsNullOrEmpty(version))
+            {
+                Console.WriteLine("SKIP WebView2 runtime test: runtime is not installed.");
+                return;
+            }
+        }
+        catch (WebView2RuntimeNotFoundException)
+        {
+            Console.WriteLine("SKIP WebView2 runtime test: runtime is not installed.");
+            return;
+        }
+
+        RobloxLoginWindow? second = null;
+        try
+        {
+            first.Show();
+            WaitForBrowser(first);
+            var firstBrowser = (WebView2)first.FindName("Browser");
+            var firstWeb = firstBrowser.CoreWebView2;
+            firstWeb.Stop();
+            Assert(firstWeb.Profile.IsInPrivateModeEnabled, "Sign-in was not InPrivate.");
+            Assert(!firstWeb.Settings.IsPasswordAutosaveEnabled && !firstWeb.Settings.IsGeneralAutofillEnabled,
+                "Sign-in enabled browser password storage or autofill.");
+            string firstDir = Path.GetFullPath(firstWeb.Environment.UserDataFolder);
+            Assert(firstDir.StartsWith(Path.Combine(root, "AccountLogin") + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase),
+                "Sign-in used the wrong browser profile directory.");
+            var fakeCookie = firstWeb.CookieManager.CreateCookie(".ROBLOSECURITY", "synthetic-test-session", ".roblox.com", "/");
+            fakeCookie.IsSecure = true;
+            fakeCookie.IsHttpOnly = true;
+            firstWeb.CookieManager.AddOrUpdateCookie(fakeCookie);
+            Assert(Pump(firstWeb.CookieManager.GetCookiesAsync("https://www.roblox.com/")).Any(x => x.Name == ".ROBLOSECURITY" && x.Value == "synthetic-test-session"),
+                "The isolated sign-in cookie could not be read.");
+
+            second = new RobloxLoginWindow();
+            second.Show();
+            WaitForBrowser(second);
+            var secondWeb = ((WebView2)second.FindName("Browser")).CoreWebView2;
+            secondWeb.Stop();
+            Assert(secondWeb.Profile.IsInPrivateModeEnabled &&
+                !Path.GetFullPath(secondWeb.Environment.UserDataFolder).Equals(firstDir, StringComparison.OrdinalIgnoreCase),
+                "Two sign-in windows shared a browser profile.");
+            Assert(!Pump(secondWeb.CookieManager.GetCookiesAsync("https://www.roblox.com/")).Any(x => x.Name == ".ROBLOSECURITY"),
+                "One sign-in window leaked its cookie to another.");
+            Console.WriteLine("PASS isolated InPrivate WebView2 sign-in profiles");
+        }
+        finally
+        {
+            second?.Close();
+            first.Close();
+        }
+    }
+
+    [SupportedOSPlatform("windows10.0.17763.0")]
+    private static void WaitForBrowser(RobloxLoginWindow window)
+    {
+        var ready = (Wpf.Ui.Controls.Button)window.FindName("SaveButton");
+        var status = (TextBlock)window.FindName("StatusText");
+        var frame = new DispatcherFrame();
+        DateTime deadline = DateTime.UtcNow.AddSeconds(45);
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+        timer.Tick += (_, _) =>
+        {
+            if (ready.IsEnabled || status.Text.StartsWith("Could not start", StringComparison.Ordinal) || DateTime.UtcNow >= deadline)
+                frame.Continue = false;
+        };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+        timer.Stop();
+        Assert(ready.IsEnabled, "WebView2 sign-in failed to initialize: " + status.Text);
+    }
+
+    private static void Pump(Task task)
+    {
+        var dispatcher = Dispatcher.CurrentDispatcher;
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(45) };
+        timer.Tick += (_, _) => frame.Continue = false;
+        task.ContinueWith(_ => dispatcher.BeginInvoke(new Action(() => frame.Continue = false)), TaskScheduler.Default);
+        if (!task.IsCompleted)
+        {
+            timer.Start();
+            Dispatcher.PushFrame(frame);
+            timer.Stop();
+        }
+        if (!task.IsCompleted) throw new TimeoutException("An asynchronous UI test timed out.");
+        task.GetAwaiter().GetResult();
+    }
+
+    private static T Pump<T>(Task<T> task)
+    {
+        Pump((Task)task);
+        return task.GetAwaiter().GetResult();
+    }
+
+    private static HttpResponseMessage JsonReply(HttpStatusCode status, string json, string? rotatedSession = null)
+    {
+        var response = new HttpResponseMessage(status) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") };
+        if (rotatedSession is not null)
+            response.Headers.TryAddWithoutValidation("Set-Cookie", ".ROBLOSECURITY=" + rotatedSession + "; Path=/; Secure; HttpOnly");
+        return response;
+    }
+
+    private sealed class CallbackHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> _send;
+        public CallbackHandler(Func<HttpRequestMessage, HttpResponseMessage> send) => _send = send;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(_send(request));
         }
     }
 

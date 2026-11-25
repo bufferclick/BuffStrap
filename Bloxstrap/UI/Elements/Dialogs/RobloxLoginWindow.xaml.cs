@@ -1,10 +1,12 @@
 using BuffStrap.Accounts;
 using Microsoft.Web.WebView2.Core;
+using System.Runtime.Versioning;
 using System.Windows;
 using Bloxstrap.UI.Elements.Base;
 
 namespace Bloxstrap.UI.Elements.Dialogs
 {
+    [SupportedOSPlatform("windows10.0.17763.0")]
     public partial class RobloxLoginWindow : WpfUiWindow
     {
         private readonly Guid? _expectedId;

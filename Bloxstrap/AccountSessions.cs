@@ -92,9 +92,9 @@ namespace Bloxstrap
         public static bool IsSaved(FavoriteAccount account) => account.UserId.HasValue && Vault.Exists(account.Id);
 
         /// <summary>Add or reconnect a public profile without ever writing its session to Favorites.json.</summary>
-        public static async Task ConnectAsync(string session, Guid? expectedId = null, CancellationToken cancellationToken = default)
+        public static async Task ConnectAsync(string session, Guid? expectedId = null, CancellationToken cancellationToken = default, RobloxAccountClient? client = null)
         {
-            var identity = await Api.GetIdentityAsync(session, cancellationToken);
+            var identity = await (client ?? Api).GetIdentityAsync(session, cancellationToken);
             var existing = FavoritesLauncher.Store.Load().Accounts;
             FavoriteAccount? match = expectedId.HasValue
                 ? existing.FirstOrDefault(x => x.Id == expectedId.Value)
@@ -138,7 +138,7 @@ namespace Bloxstrap
         }
 
         // Called immediately before starting the player, not before an update/download.
-        public static async Task<string> CreateLaunchTicketAsync(Guid accountId, CancellationToken cancellationToken = default)
+        public static async Task<string> CreateLaunchTicketAsync(Guid accountId, CancellationToken cancellationToken = default, RobloxAccountClient? client = null)
         {
             using var accountLock = await Vault.LockAsync(accountId, cancellationToken);
             var account = FavoritesLauncher.Store.Load().Accounts.FirstOrDefault(x => x.Id == accountId)
@@ -147,10 +147,11 @@ namespace Bloxstrap
                 throw new RobloxAccountException("Sign in to @" + account.Username + " in Account Manager before playing.");
             string session = Vault.Read(accountId);
             void SaveRotation(string rotated) => Vault.Save(accountId, rotated);
-            var identity = await Api.GetIdentityAsync(session, cancellationToken, SaveRotation);
+            var api = client ?? Api;
+            var identity = await api.GetIdentityAsync(session, cancellationToken, SaveRotation);
             if (identity.UserId != account.UserId)
                 throw new RobloxAccountException("The saved session belongs to a different Roblox account. Sign in again.");
-            var ticket = await Api.GetTicketAsync(identity.Session, cancellationToken, SaveRotation);
+            var ticket = await api.GetTicketAsync(identity.Session, cancellationToken, SaveRotation);
             return ticket.Value;
         }
 
