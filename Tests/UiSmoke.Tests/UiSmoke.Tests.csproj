@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Bloxstrap/Bloxstrap.csproj" />
+    <!-- The launcher uses root pack URIs, so mirror its theme resources in the
+         test entry assembly while still instantiating the real launcher windows. -->
+    <Page Include="../../Bloxstrap/UI/Style/Dark.xaml" Link="UI/Style/Dark.xaml" />
+    <Page Include="../../Bloxstrap/UI/Style/Light.xaml" Link="UI/Style/Light.xaml" />
+    <Resource Include="../../Bloxstrap/Bloxstrap.ico" Link="Bloxstrap.ico" />
+    <Resource Include="../../Bloxstrap/Resources/BuffStrapWordmark-Dark.png" Link="Resources/BuffStrapWordmark-Dark.png" />
+    <Resource Include="../../Bloxstrap/Resources/BuffStrapWordmark-Light.png" Link="Resources/BuffStrapWordmark-Light.png" />
+  </ItemGroup>
+</Project>

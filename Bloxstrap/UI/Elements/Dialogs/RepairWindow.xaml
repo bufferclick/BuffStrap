@@ -1,0 +1,38 @@
+<base:WpfUiWindow x:Class="Bloxstrap.UI.Elements.Dialogs.RepairWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:base="clr-namespace:Bloxstrap.UI.Elements.Base"
+        Title="BuffStrap repair" Width="650" Height="640" MinWidth="550" MinHeight="500"
+        WindowStartupLocation="CenterOwner" ExtendsContentIntoTitleBar="True"
+        Background="{ui:ThemeResource ApplicationBackgroundBrush}">
+    <Grid Background="{DynamicResource MainWindowBackgroundBrush}">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <ui:TitleBar Grid.Row="0" Padding="8" Title="Repair" Icon="pack://application:,,,/Bloxstrap.ico"
+                     ShowMinimize="False" ShowMaximize="False" CanMaximize="False" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="20,12,20,12">
+            <StackPanel>
+                <TextBlock Text="Installation check" FontSize="20" FontWeight="Medium" />
+                <TextBlock Text="This checks common launcher registrations, shortcuts and the Roblox player executable. It is not a full integrity scan. No changes are made until you confirm below."
+                           TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,4,0,10" />
+                <ui:Card><TextBlock x:Name="FindingsText" TextWrapping="Wrap" /></ui:Card>
+                <TextBlock Text="Choose repairs" FontSize="17" FontWeight="Medium" Margin="0,16,0,4" />
+                <CheckBox x:Name="ProtocolCheck" Content="Restore Roblox Player launch links to BuffStrap" Margin="0,8,0,0" />
+                <CheckBox x:Name="ApiCheck" Content="Restore BuffStrap integration registration" Margin="0,8,0,0" />
+                <CheckBox x:Name="UninstallCheck" Content="Restore BuffStrap installation registration" Margin="0,8,0,0" />
+                <CheckBox x:Name="DesktopCheck" Content="Create or replace the Desktop shortcut" Margin="0,8,0,0" />
+                <CheckBox x:Name="StartCheck" Content="Create or replace the Start menu shortcut" Margin="0,8,0,0" />
+                <CheckBox x:Name="PlayerCheck" Content="Reinstall Roblox Player files on the next Player launch" Margin="0,8,0,0" />
+                <TextBlock Text="Missing shortcuts may be intentional, so they are not selected automatically. Reinstalling Roblox may require a network connection and close a running player. Settings, mods, favorites and Roblox login data are not removed."
+                           TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,12,0,0" />
+            </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="2" Padding="16" Background="{ui:ThemeResource SolidBackgroundFillColorSecondaryBrush}">
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <ui:Button Content="Scan again" Click="Scan_Click" Margin="0,0,8,0" />
+                <ui:Button Content="Repair selected" Click="Repair_Click" Margin="0,0,8,0" />
+                <ui:Button Content="Close" Click="Close_Click" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</base:WpfUiWindow>

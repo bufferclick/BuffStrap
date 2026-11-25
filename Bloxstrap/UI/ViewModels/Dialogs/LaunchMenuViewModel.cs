@@ -1,8 +1,9 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 
 using Bloxstrap.UI.Elements.About;
+using Bloxstrap.UI.Elements.Dialogs;
 
 namespace Bloxstrap.UI.ViewModels.Installer
 {
@@ -20,6 +21,8 @@ namespace Bloxstrap.UI.ViewModels.Installer
 
         public ICommand LaunchAboutCommand => new RelayCommand(LaunchAbout);
 
+        public ICommand LaunchFavoritesCommand => new RelayCommand(LaunchFavorites);
+
         public event EventHandler<NextAction>? CloseWindowRequest;
 
         private void LaunchSettings() => CloseWindowRequest?.Invoke(this, NextAction.LaunchSettings);
@@ -29,5 +32,7 @@ namespace Bloxstrap.UI.ViewModels.Installer
         private void LaunchRobloxStudio() => CloseWindowRequest?.Invoke(this, NextAction.LaunchRobloxStudio);
 
         private void LaunchAbout() => new MainWindow().ShowDialog();
+
+        private void LaunchFavorites() => new FavoritesWindow().ShowDialog();
     }
 }

@@ -23,5 +23,8 @@ jobs:
       - name: Build
         run: dotnet build .\BuffStrap.sln -c Debug --no-restore
 
-      - name: Test release and update rules
+      - name: Test releases, favorites and backups
         run: dotnet run --project .\Tests\ReleaseClient.Tests\ReleaseClient.Tests.csproj -c Debug --no-build
+
+      - name: Smoke test WPF pages and shortcuts
+        run: dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Debug --no-build

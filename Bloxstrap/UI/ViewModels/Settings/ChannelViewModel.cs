@@ -1,4 +1,4 @@
-﻿using Bloxstrap.RobloxInterfaces;
+using Bloxstrap.RobloxInterfaces;
 using System.Windows;
 
 namespace Bloxstrap.UI.ViewModels.Settings
@@ -152,8 +152,12 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
         public bool ForceRobloxReinstallation
         {
-            get => App.State.Prop.ForceReinstall || IsRobloxInstallationMissing;
-            set => App.State.Prop.ForceReinstall = value;
+            get => App.State.Prop.ForceReinstall || App.State.Prop.ForcePlayerRepair || IsRobloxInstallationMissing;
+            set
+            {
+                App.State.Prop.ForceReinstall = value;
+                if (!value) App.State.Prop.ForcePlayerRepair = false;
+            }
         }
     }
 }

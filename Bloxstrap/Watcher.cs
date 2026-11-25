@@ -1,4 +1,4 @@
-﻿using Bloxstrap.AppData;
+using Bloxstrap.AppData;
 using Bloxstrap.Integrations;
 
 namespace Bloxstrap
@@ -61,6 +61,11 @@ namespace Bloxstrap
             if (App.Settings.Prop.EnableActivityTracking)
             {
                 ActivityWatcher = new(_watcherData.LogFile) { PrivateServer = _watcherData.PrivateServer };
+                ActivityWatcher.OnGameJoin += (_, _) =>
+                {
+                    try { FavoritesLauncher.Store.RecordJoin(ActivityWatcher.Data.PlaceId, DateTimeOffset.UtcNow); }
+                    catch (Exception ex) { App.Logger.WriteException("Watcher::RecordRecentlyPlayed", ex); }
+                };
 
                 if (App.Settings.Prop.UseDisableAppPatch)
                 {

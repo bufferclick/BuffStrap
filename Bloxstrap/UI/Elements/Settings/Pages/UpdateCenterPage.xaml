@@ -1,0 +1,60 @@
+<ui:UiPage x:Class="Bloxstrap.UI.Elements.Settings.Pages.UpdateCenterPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:controls="clr-namespace:Bloxstrap.UI.Elements.Controls"
+      Title="Update Center" Scrollable="True">
+    <StackPanel Margin="0,0,14,14">
+        <TextBlock Text="Update Center" FontSize="20" FontWeight="Medium" />
+        <TextBlock Text="Check releases, choose a version, and keep your installation healthy."
+                   FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+
+        <controls:OptionControl x:Name="InstalledVersionOption" Header="Installed version" Description="The version of BuffStrap currently running.">
+            <TextBlock />
+        </controls:OptionControl>
+        <controls:OptionControl x:Name="LastCheckOption" Header="Last update check" Description="The most recent successful check for a BuffStrap release.">
+            <TextBlock TextAlignment="Right" />
+        </controls:OptionControl>
+        <controls:OptionControl x:Name="AutoUpdateOption" Header="Automatic updates" Description="Use Save below to apply this setting. Deliberate rollbacks turn automatic updates off so the older version stays installed.">
+            <ui:ToggleSwitch Click="AutoUpdate_Click" />
+        </controls:OptionControl>
+
+        <TextBlock Text="Releases" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
+        <ui:Card Margin="0,8,0,0">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock x:Name="LatestText" Text="No release checked yet" />
+                        <TextBlock x:Name="CheckStatusText" Margin="0,3,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                    </StackPanel>
+                    <ui:Button x:Name="CheckButton" Grid.Column="1" Content="Check for updates" Icon="ArrowSync24" Click="Check_Click" Margin="12,0,0,0" />
+                </Grid>
+                <TextBlock Text="Release changes" FontWeight="Medium" Margin="0,14,0,4" />
+                <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <TextBlock x:Name="NotesText" Text="Check for updates to see release notes." TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                </ScrollViewer>
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <ComboBox x:Name="ReleaseList" Grid.Column="0" SelectionChanged="Release_Changed" Margin="0,0,8,0" />
+                    <ui:Button x:Name="InstallButton" Grid.Column="1" Content="Install selected version" IsEnabled="False" Click="Install_Click" />
+                </Grid>
+                <TextBlock Text="Older releases can be incompatible with newer settings. Rollback pauses automatic updates; you can re-enable them later."
+                           TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,8,0,0" />
+            </StackPanel>
+        </ui:Card>
+
+        <TextBlock Text="Backup and restore" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
+        <controls:OptionControl x:Name="BackupOption" Header="Back up data" Description="Saves last-saved BuffStrap settings, FastFlags, mods, favorites, account labels, profiles and launcher themes. Roblox login/session files are excluded; custom content can still contain personal information or secrets.">
+            <ui:Button Content="Create backup" Click="Backup_Click" />
+        </controls:OptionControl>
+        <controls:OptionControl x:Name="RestoreOption" Header="Restore data" Description="Replaces files contained in a validated backup, keeps extra files, and then closes BuffStrap. Make a backup of your current data first.">
+            <ui:Button Content="Restore backup" Click="Restore_Click" />
+        </controls:OptionControl>
+
+        <TextBlock Text="Repair" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
+        <controls:OptionControl Header="Check and repair installation" Description="Review common issues and choose what to fix. Your settings, mods, favorites and account data are kept.">
+            <ui:Button Content="Open repair" Click="Repair_Click" />
+        </controls:OptionControl>
+    </StackPanel>
+</ui:UiPage>

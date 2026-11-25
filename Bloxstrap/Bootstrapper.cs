@@ -55,7 +55,9 @@ namespace Bloxstrap
         private long _totalPackagedBytes = 0;
         private bool _packageExtractionSuccess = true;
 
-        private bool _mustUpgrade => App.LaunchSettings.ForceFlag.Active || App.State.Prop.ForceReinstall || String.IsNullOrEmpty(AppData.State.VersionGuid) || !File.Exists(AppData.ExecutablePath);
+        private bool _mustUpgrade => App.LaunchSettings.ForceFlag.Active || App.State.Prop.ForceReinstall ||
+            (!IsStudioLaunch && !App.LaunchSettings.BackgroundUpdaterFlag.Active && App.State.Prop.ForcePlayerRepair) ||
+            String.IsNullOrEmpty(AppData.State.VersionGuid) || !File.Exists(AppData.ExecutablePath);
         private bool _noConnection = false;
 
         private AsyncMutex? _mutex;
@@ -1335,6 +1337,8 @@ namespace Bloxstrap
             App.Logger.WriteLine(LOG_IDENT, $"Registered as {totalSize} KB");
 
             App.State.Prop.ForceReinstall = false;
+            if (!IsStudioLaunch && !App.LaunchSettings.BackgroundUpdaterFlag.Active && _packageExtractionSuccess)
+                App.State.Prop.ForcePlayerRepair = false;
 
             App.State.Save();
             App.RobloxState.Save();

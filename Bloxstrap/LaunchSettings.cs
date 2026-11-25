@@ -1,4 +1,4 @@
-﻿using Bloxstrap.Enums;
+using Bloxstrap.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,6 +43,8 @@ namespace Bloxstrap
         public LaunchFlag BloxshadeFlag { get; } = new("bloxshade");
 
         public LaunchFlag DiscordJoinFlag { get; } = new("discordjoin");
+
+        public LaunchFlag FavoriteFlag { get; } = new("favorite");
 
 #if DEBUG
         public bool BypassUpdateCheck => true;

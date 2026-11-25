@@ -1,4 +1,4 @@
-﻿<ui:UiPage x:Class="Bloxstrap.UI.Elements.Settings.Pages.IntegrationsPage"
+<ui:UiPage x:Class="Bloxstrap.UI.Elements.Settings.Pages.IntegrationsPage"
       x:Name="IntegrationsPageView"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -119,6 +119,9 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
         </controls:OptionControl>
+
+        <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   Text="Choose Default to leave Roblox's own theme selection unchanged. Roblox may offer additional curated themes in its settings. Arbitrary custom themes inside the Roblox app are not supported by BuffStrap." />
 
         <TextBlock Text="{x:Static resources:Strings.Menu_Integrations_Custom_Title}" FontSize="20" FontWeight="Medium" Margin="0,16,0,0" />
         <TextBlock Text="{x:Static resources:Strings.Menu_Integrations_Custom_Description}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
