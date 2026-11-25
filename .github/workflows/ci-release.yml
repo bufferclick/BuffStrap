@@ -42,9 +42,20 @@ jobs:
       - name: Publish setup
         run: dotnet publish .\BuffStrapSetup\BuffStrapSetup.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\publish\setup
 
-      - name: Prepare release files
+      - name: Verify executable identities and prepare release files
         shell: pwsh
         run: |
+          [xml]$props = Get-Content BuffStrap.Version.props
+          $expectedVersion = [string]$props.Project.PropertyGroup.FileVersion
+          foreach ($entry in @(
+            @{ Path = '.\publish\app\BuffStrap.exe'; Product = 'BuffStrap' },
+            @{ Path = '.\publish\setup\BuffStrapSetup.exe'; Product = 'BuffStrap Setup' }
+          )) {
+            $info = [Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path $entry.Path).Path)
+            if ($info.ProductName -cne $entry.Product -or $info.FileVersion -cne $expectedVersion) {
+              throw "Unexpected identity for $($entry.Path): $($info.ProductName) $($info.FileVersion)."
+            }
+          }
           New-Item -ItemType Directory -Path release -Force | Out-Null
           Copy-Item .\publish\app\BuffStrap.exe .\release\BuffStrap.exe
           Copy-Item .\publish\setup\BuffStrapSetup.exe .\release\BuffStrapSetup.exe

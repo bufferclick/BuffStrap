@@ -301,7 +301,7 @@ namespace Bloxstrap
                 Logger.WriteLine(LOG_IDENT, $"Distributor: {Settings.Prop.DistributorType}");
 
                 if (Settings.Prop.AllowCookieAccess)
-                    Task.Run(Cookies.LoadCookies);
+                    _ = Task.Run(Cookies.LoadCookies);
 
                 if (!Locale.SupportedLocales.ContainsKey(Settings.Prop.Locale))
                 {
@@ -326,7 +326,7 @@ namespace Bloxstrap
                 }
 #endif
 
-                Task.Run(App.RemoteData.LoadData); // ok
+                _ = Task.Run(App.RemoteData.LoadData); // Load the upstream configuration in the background.
 
                 WindowsRegistry.RegisterApis(); // we want to register those early on
                                                 // so we wont have any issues with bloxshade
