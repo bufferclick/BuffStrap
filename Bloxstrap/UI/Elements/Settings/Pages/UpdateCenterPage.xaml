@@ -9,14 +9,14 @@
         <TextBlock Text="Check releases, choose a version, and keep your installation healthy."
                    FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
 
-        <controls:OptionControl Header="Installed version" Description="The version of BuffStrap currently running.">
-            <TextBlock x:Name="InstalledVersionText" />
+        <controls:OptionControl x:Name="InstalledVersionOption" Header="Installed version" Description="The version of BuffStrap currently running.">
+            <TextBlock />
         </controls:OptionControl>
-        <controls:OptionControl Header="Last update check" Description="The most recent successful check for a BuffStrap release.">
-            <TextBlock x:Name="LastCheckText" TextAlignment="Right" />
+        <controls:OptionControl x:Name="LastCheckOption" Header="Last update check" Description="The most recent successful check for a BuffStrap release.">
+            <TextBlock TextAlignment="Right" />
         </controls:OptionControl>
-        <controls:OptionControl Header="Automatic updates" Description="Use Save below to apply this setting. Deliberate rollbacks turn automatic updates off so the older version stays installed.">
-            <ui:ToggleSwitch x:Name="AutoUpdateSwitch" Click="AutoUpdate_Click" />
+        <controls:OptionControl x:Name="AutoUpdateOption" Header="Automatic updates" Description="Use Save below to apply this setting. Deliberate rollbacks turn automatic updates off so the older version stays installed.">
+            <ui:ToggleSwitch Click="AutoUpdate_Click" />
         </controls:OptionControl>
 
         <TextBlock Text="Releases" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
@@ -45,11 +45,11 @@
         </ui:Card>
 
         <TextBlock Text="Backup and restore" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />
-        <controls:OptionControl Header="Back up data" Description="Saves last-saved BuffStrap settings, FastFlags, mods, favorites, account labels, profiles and launcher themes. Roblox login/session files are excluded; custom content can still contain personal information.">
-            <ui:Button x:Name="BackupButton" Content="Create backup" Click="Backup_Click" />
+        <controls:OptionControl x:Name="BackupOption" Header="Back up data" Description="Saves last-saved BuffStrap settings, FastFlags, mods, favorites, account labels, profiles and launcher themes. Roblox login/session files are excluded; custom content can still contain personal information.">
+            <ui:Button Content="Create backup" Click="Backup_Click" />
         </controls:OptionControl>
-        <controls:OptionControl Header="Restore data" Description="Replaces files contained in a validated backup, keeps extra files, and then closes BuffStrap. Make a backup of your current data first.">
-            <ui:Button x:Name="RestoreButton" Content="Restore backup" Click="Restore_Click" />
+        <controls:OptionControl x:Name="RestoreOption" Header="Restore data" Description="Replaces files contained in a validated backup, keeps extra files, and then closes BuffStrap. Make a backup of your current data first.">
+            <ui:Button Content="Restore backup" Click="Restore_Click" />
         </controls:OptionControl>
 
         <TextBlock Text="Repair" FontSize="16" FontWeight="Medium" Margin="0,18,0,0" />

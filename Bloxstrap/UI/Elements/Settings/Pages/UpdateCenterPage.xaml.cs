@@ -10,6 +10,11 @@ namespace Bloxstrap.UI.Elements.Settings.Pages
     public partial class UpdateCenterPage
     {
         private bool _busy;
+        private TextBlock InstalledVersionText => (TextBlock)InstalledVersionOption.InnerContent;
+        private TextBlock LastCheckText => (TextBlock)LastCheckOption.InnerContent;
+        private Wpf.Ui.Controls.ToggleSwitch AutoUpdateSwitch => (Wpf.Ui.Controls.ToggleSwitch)AutoUpdateOption.InnerContent;
+        private Wpf.Ui.Controls.Button BackupButton => (Wpf.Ui.Controls.Button)BackupOption.InnerContent;
+        private Wpf.Ui.Controls.Button RestoreButton => (Wpf.Ui.Controls.Button)RestoreOption.InnerContent;
 
         public UpdateCenterPage()
         {
