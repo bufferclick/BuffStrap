@@ -222,6 +222,11 @@ internal static class Program
             var accountArgs = new LaunchSettings(new[] { "-account", account.Id.ToString("D"), "-accountplace", "123" });
             Assert(accountArgs.AccountFlag.Data == account.Id.ToString("D") && accountArgs.AccountPlaceFlag.Data == "123",
                 "The selected account launch arguments did not parse.");
+            string accountUri = RobloxAccountClient.BuildPlayerUri("synthetic-ticket", 123, 1234567890,
+                DateTimeOffset.UtcNow, Guid.NewGuid());
+            var join = new GameJoin().GetJoinDataByLaunchCommand(accountUri);
+            Assert(join.JoinType == GameJoinType.RequestGame && join.PlaceId == 123 && join.JoinOrigin == "PlayButton",
+                "The selected account launch could not be parsed by the existing join pipeline.");
 
             Mark("Checking shortcuts and repair");
             // Exercise the actual shortcut writer against a temporary path, never the runner's Desktop.
@@ -330,6 +335,10 @@ internal static class Program
             Mark("Plain WPF window closed");
             Mark("Opening the first WebView2 window");
             first.SourceInitialized += (_, _) => Mark("First WebView2 window source initialized");
+            var firstStatus = (TextBlock)first.FindName("StatusText");
+            System.ComponentModel.DependencyPropertyDescriptor.FromProperty(TextBlock.TextProperty, typeof(TextBlock))
+                .AddValueChanged(firstStatus, (_, _) => Mark("Sign-in: " + firstStatus.Text));
+            ((WebView2)first.FindName("Browser")).Loaded += (_, _) => Mark("First WebView2 control loaded");
             first.Show();
             Mark("First WebView2 window shown; waiting for browser");
             WaitForBrowser(first);

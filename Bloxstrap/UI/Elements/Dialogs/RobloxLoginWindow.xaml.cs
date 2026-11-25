@@ -27,9 +27,16 @@ namespace Bloxstrap.UI.Elements.Dialogs
         {
             try
             {
+                StatusText.Text = "Preparing an isolated browser...";
                 CleanupOldProfiles();
                 var environment = await CoreWebView2Environment.CreateAsync(null, _profileDirectory);
-                if (_closed) return;
+                if (_closed)
+                {
+                    // The environment may have created its profile after the window closed.
+                    _ = DeleteWhenReleasedAsync(_profileDirectory);
+                    return;
+                }
+                StatusText.Text = "Starting the isolated browser...";
                 var options = environment.CreateCoreWebView2ControllerOptions();
                 options.IsInPrivateModeEnabled = true;
                 await Browser.EnsureCoreWebView2Async(environment, options);

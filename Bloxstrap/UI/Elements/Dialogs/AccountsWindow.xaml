@@ -32,7 +32,7 @@
             <ui:Card Grid.Row="1" Margin="0,0,0,18">
                 <StackPanel>
                     <TextBlock Text="Pick a game" FontSize="15" FontWeight="Medium" />
-                    <TextBlock Text="Paste a Roblox game link or place ID, then press Play on an account."
+                    <TextBlock Text="Paste a Roblox game link or place ID, then press Play on an account. Roblox may change its shared last-signed-in account."
                                FontSize="12" Margin="0,4,0,10" TextWrapping="Wrap"
                                Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
                     <ui:TextBox x:Name="PlaceBox" PlaceholderText="Game link or place ID" />

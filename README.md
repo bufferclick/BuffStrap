@@ -34,7 +34,7 @@ Open **Accounts** from the launch menu. Select **Add account**, sign in on Roblo
 
 Open **Favorites** to organize games into folders, search and edit them, assign saved accounts, and create Desktop or Start menu shortcuts. Shortcuts reference the saved favorite, so later edits and account assignments still apply. An assigned favorite uses that account; a missing, expired or rejected session results in an error, not a silent switch to the current account. Unassigned favorites use the current Roblox session. Recently Played records confirmed joins while activity tracking is enabled, up to 50 locally. Username-only entries created by v1.0.1 remain in place, including their favorite assignments, but must be signed in before use. Removing an account deletes its local session and, after confirmation, unassigns its favorites; it does not revoke that session on Roblox's servers.
 
-The account manager uses an **unofficial** Roblox web-to-player flow: it checks the saved session and requests a short-lived launch ticket immediately before starting the unmodified Roblox Player. Roblox can expire, rotate, bind or reject sessions and change this flow at any time; sign in again if prompted. Roblox's official [account switcher](https://en.help.roblox.com/hc/en-us/articles/21037888001044-Account-Switching) is a separate web feature. BuffStrap does not capture passwords or bypass verification. Sessions are encrypted with Windows DPAPI for the current Windows user; other programs running as that user may still be able to access them. A one-time ticket is passed to Roblox in its process command line and Roblox may write it to its own logs; do not share those logs indiscriminately.
+The account manager uses an **unofficial** Roblox web-to-player flow: it checks the saved session and requests a short-lived launch ticket immediately before starting the unmodified Roblox Player. Roblox can expire, rotate, bind or reject sessions and change this flow at any time; sign in again if prompted. **Launching a selected account may change Roblox's shared last-signed-in account**, including for launches outside BuffStrap. Roblox's official [account switcher](https://en.help.roblox.com/hc/en-us/articles/21037888001044-Account-Switching) is a separate web feature. BuffStrap does not capture passwords or bypass verification. Sessions are encrypted with Windows DPAPI for the current Windows user; other programs running as that user may still be able to access them. A one-time ticket is passed to Roblox in its process command line and Roblox may write it to its own logs; do not share those logs indiscriminately.
 
 ## Backup, restore and repair
 
@@ -58,6 +58,10 @@ dotnet restore .\BuffStrap.sln
 dotnet build .\BuffStrap.sln -c Release
 dotnet run --project .\Tests\ReleaseClient.Tests\ReleaseClient.Tests.csproj -c Release
 dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Release
+# On an interactive Windows desktop with WebView2 installed, also exercise the isolated profiles:
+$env:BUFFSTRAP_TEST_WEBVIEW2 = '1'
+dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Release
+Remove-Item Env:\BUFFSTRAP_TEST_WEBVIEW2
 dotnet publish .\Bloxstrap\Bloxstrap.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 dotnet publish .\BuffStrapSetup\BuffStrapSetup.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
