@@ -101,8 +101,20 @@ namespace Bloxstrap
             }
         }
 
+        // Defense in depth for recognizable Roblox credentials if a future
+        // caller accidentally logs a URI or an HTTP header. Avoid logging the
+        // request in the first place; redaction cannot recognize every secret.
+        internal static string RedactSecrets(string message)
+        {
+            message = Regex.Replace(message, @"(?i)(gameinfo(?:%3a|:))[^+\s\""']+", "$1[redacted]");
+            message = Regex.Replace(message, @"(?i)(\.ROBLOSECURITY(?:%3d|=|[\""'\s:]+))[^;\s,\""']+", "$1[redacted]");
+            message = Regex.Replace(message, @"(?i)((?:rbx-authentication-ticket|x-csrf-token)(?:%3a|[\""'\s:=])+)[^;\s,\""']+", "$1[redacted]");
+            return Regex.Replace(message, @"(?i)_\|WARNING:-DO-NOT-SHARE-THIS[^\s\""';]*", "[redacted Roblox session]");
+        }
+
         private void WriteLine(string message)
         {
+            message = RedactSecrets(message);
             string timestamp = DateTime.UtcNow.ToString("s") + "Z";
             string outcon = $"{timestamp} {message}";
             string outlog = outcon.Replace(Paths.UserProfile, "%UserProfile%", StringComparison.InvariantCultureIgnoreCase);

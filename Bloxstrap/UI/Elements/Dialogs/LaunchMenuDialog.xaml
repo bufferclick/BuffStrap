@@ -46,7 +46,7 @@
 
                 <StackPanel Grid.Row="1" HorizontalAlignment="Center">
                     <ui:Hyperlink Icon="QuestionCircle48" Content="{x:Static resources:Strings.About_Title}" Margin="0,0,0,8" Command="{Binding LaunchAboutCommand, Mode=OneTime}" HorizontalAlignment="Center" />
-                    <ui:Hyperlink Icon="Chat48" Content="Fishstrap community" NavigateUri="https://discord.gg/xSsamjAU84" HorizontalAlignment="Center" />
+                    <ui:Hyperlink Icon="Code24" Content="BuffStrap on GitHub" NavigateUri="https://github.com/bufferclick/BuffStrap" HorizontalAlignment="Center" />
                 </StackPanel>
             </Grid>
 
@@ -70,9 +70,15 @@
                     </StackPanel>
                 </ui:CardAction>
 
-                <Border Margin="16" />
+                <ui:CardAction Margin="0,8,0,0" TabIndex="3" Icon="Person24" Command="{Binding LaunchAccountsCommand, Mode=OneTime}">
+                    <StackPanel>
+                        <TextBlock FontSize="14" Text="Accounts" />
+                    </StackPanel>
+                </ui:CardAction>
 
-                <ui:CardAction Visibility="Visible" Margin="0,8,0,0" TabIndex="3" Icon="Wrench24" Command="{Binding LaunchRobloxStudioCommand, Mode=OneTime}">
+                <Border Margin="12" />
+
+                <ui:CardAction Visibility="Visible" Margin="0,8,0,0" TabIndex="4" Icon="Wrench24" Command="{Binding LaunchRobloxStudioCommand, Mode=OneTime}">
                     <StackPanel>
                         <TextBlock FontSize="14" Text="{x:Static resources:Strings.LaunchMenu_LaunchRobloxStudio}" />
                     </StackPanel>

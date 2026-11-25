@@ -45,7 +45,6 @@ namespace Bloxstrap.UI.Elements.Dialogs
                 FolderFilter.ItemsSource = folders;
                 FolderFilter.SelectedItem = folders.Contains(selection) ? selection : "All folders";
                 _refreshing = false;
-                AccountsList.ItemsSource = _data.Accounts.OrderBy(x => x.Username, StringComparer.CurrentCultureIgnoreCase).ToList();
                 RecentList.ItemsSource = _data.Recent.OrderByDescending(x => x.PlayedAtUtc).Select(x => new RecentRow { Game = x }).ToList();
                 RefreshGames();
             }
@@ -166,43 +165,10 @@ namespace Bloxstrap.UI.Elements.Dialogs
             catch (Exception ex) { ShowError("Could not create all shortcuts", ex); }
         }
 
-        private void AddAccount_Click(object sender, RoutedEventArgs e)
+        private void ManageAccounts_Click(object sender, RoutedEventArgs e)
         {
-            string username = AccountNameBox.Text.Trim();
-            if (!FavoritesStore.IsValidUsername(username))
-            {
-                Frontend.ShowMessageBox("Enter a Roblox username (3–20 letters, numbers or underscores).", MessageBoxImage.Warning);
-                return;
-            }
-            try
-            {
-                FavoritesLauncher.Store.Update(data =>
-                {
-                    if (data.Accounts.Any(x => x.Username.Equals(username, StringComparison.OrdinalIgnoreCase)))
-                        throw new InvalidOperationException("That username is already in the list.");
-                    data.Accounts.Add(new FavoriteAccount { Username = username });
-                });
-                AccountNameBox.Text = "";
-                Reload();
-            }
-            catch (Exception ex) { ShowError("Could not add the account", ex); }
-        }
-
-        private void RemoveAccount_Click(object sender, RoutedEventArgs e)
-        {
-            if ((sender as FrameworkElement)?.DataContext is not FavoriteAccount account) return;
-            if (Frontend.ShowMessageBox($"Remove {account.Username}? Games assigned to it will use the current Roblox session instead.",
-                    MessageBoxImage.Warning, MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
-            try
-            {
-                FavoritesLauncher.Store.Update(data =>
-                {
-                    data.Accounts.RemoveAll(x => x.Id == account.Id);
-                    foreach (var game in data.Games.Where(x => x.AccountId == account.Id)) game.AccountId = null;
-                });
-                Reload();
-            }
-            catch (Exception ex) { ShowError("Could not remove the account", ex); }
+            new AccountsWindow { Owner = this }.ShowDialog();
+            Reload();
         }
 
         private static void ShowError(string title, Exception ex)

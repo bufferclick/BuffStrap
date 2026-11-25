@@ -185,7 +185,6 @@
                     if (match.Groups.Count != 4)
                     {
                         App.Logger.WriteLine(LOG_IDENT, $"Failed to assert format for game join entry");
-                        App.Logger.WriteLine(LOG_IDENT, logMessage);
                         return;
                     }
 
@@ -220,7 +219,6 @@
                     if (match.Groups.Count != 3)
                     {
                         App.Logger.WriteLine(LOG_IDENT, "Failed to assert format for game join universe entry");
-                        App.Logger.WriteLine(LOG_IDENT, logMessage);
                         return;
                     }
 
@@ -261,7 +259,6 @@
                     if (match.Groups.Count != 3 || match.Groups[2].Value != Data.MachineAddress)
                     {
                         App.Logger.WriteLine(LOG_IDENT, "Failed to assert format for game join UDMUX entry");
-                        App.Logger.WriteLine(LOG_IDENT, logMessage);
                         return;
                     }
 
@@ -276,7 +273,6 @@
                     if (match.Groups.Count != 2 || match.Groups[1].Value != Data.MachineAddress)
                     {
                         App.Logger.WriteLine(LOG_IDENT, $"Failed to assert format for game joined entry");
-                        App.Logger.WriteLine(LOG_IDENT, logMessage);
                         return;
                     }
 
@@ -330,14 +326,13 @@
                     if (match.Groups.Count != 2)
                     {
                         App.Logger.WriteLine(LOG_IDENT, $"Failed to assert format for RPC message entry");
-                        App.Logger.WriteLine(LOG_IDENT, logMessage);
                         return;
                     }
 
                     string messagePlain = match.Groups[1].Value;
                     Message? message;
 
-                    App.Logger.WriteLine(LOG_IDENT, $"Received message: '{messagePlain}'");
+                    App.Logger.WriteLine(LOG_IDENT, "Received a game RPC message");
 
                     if ((DateTime.Now - LastRPCRequest).TotalSeconds <= 1)
                     {
@@ -407,7 +402,6 @@
                     if (!match.Success && match.Groups.Count == 2)
                     {
                         App.Logger.WriteLine(LOG_IDENT, $"Failed to assert format for server uptime entry");
-                        App.Logger.WriteLine(LOG_IDENT, logMessage);
                         return;
                     }
 

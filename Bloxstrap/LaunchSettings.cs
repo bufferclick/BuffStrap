@@ -46,6 +46,12 @@ namespace Bloxstrap
 
         public LaunchFlag FavoriteFlag { get; } = new("favorite");
 
+        // These identify a locally saved account and a game, never a cookie or ticket.
+        public LaunchFlag AccountFlag { get; } = new("account");
+        public LaunchFlag AccountPlaceFlag { get; } = new("accountplace");
+        public Guid? SelectedAccountId { get; set; }
+        public long? SelectedAccountPlaceId { get; set; }
+
 #if DEBUG
         public bool BypassUpdateCheck => true;
 #else
@@ -65,9 +71,8 @@ namespace Bloxstrap
         {
             const string LOG_IDENT = "LaunchSettings::LaunchSettings";
 
-#if DEBUG
-            App.Logger.WriteLine(LOG_IDENT, $"Launched with arguments: {string.Join(' ', args)}");
-#endif
+            // Launch URIs can contain one-time Roblox authentication tickets.
+            // Do not log the command line, even in debug builds.
 
             Args = args;
 
@@ -117,7 +122,7 @@ namespace Bloxstrap
 
                 if (!arg.StartsWith('-'))
                 {
-                    App.Logger.WriteLine(LOG_IDENT, $"Invalid argument: {arg}");
+                    App.Logger.WriteLine(LOG_IDENT, "Ignoring an invalid argument");
                     continue;
                 }
 
@@ -125,7 +130,7 @@ namespace Bloxstrap
 
                 if (!flagMap.TryGetValue(identifier, out LaunchFlag? flag) || flag is null)
                 {
-                    App.Logger.WriteLine(LOG_IDENT, $"Unknown argument: {identifier}");
+                    App.Logger.WriteLine(LOG_IDENT, "Ignoring an unknown argument");
                     continue;
                 }
 

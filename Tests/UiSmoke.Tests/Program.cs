@@ -34,11 +34,13 @@ internal static class Program
             // Loading the real BAML catches errors in names, controls, resources and event wiring.
             var menu = new LaunchMenuDialog();
             var favorites = new FavoritesWindow();
+            var accounts = new AccountsWindow();
+            var login = new RobloxLoginWindow();
             var editor = new FavoriteEditWindow(first, new[] { account });
             var shortcutDialog = new FavoriteShortcutWindow();
             var repair = new RepairWindow();
             var updates = new UpdateCenterPage();
-            Assert(menu.Content is not null && editor.Content is not null && shortcutDialog.Content is not null && repair.Content is not null && updates.Content is not null,
+            Assert(menu.Content is not null && accounts.Content is not null && login.Content is not null && editor.Content is not null && shortcutDialog.Content is not null && repair.Content is not null && updates.Content is not null,
                 "A window or page failed to load its content.");
             var list = (ItemsControl)favorites.FindName("GamesList");
             var search = (TextBox)favorites.FindName("SearchBox");
@@ -57,10 +59,21 @@ internal static class Program
             var bitmap = new RenderTargetBitmap(900, 650, 96, 96, PixelFormats.Pbgra32);
             bitmap.Render(visual);
             Assert(ContainsText(visual, "Alpha game"), "A favorite row did not render its bound name.");
-            ((TextBox)favorites.FindName("AccountNameBox")).Text = "Second_User";
-            typeof(FavoritesWindow).GetMethod("AddAccount_Click", BindingFlags.NonPublic | BindingFlags.Instance)!
-                .Invoke(favorites, new object[] { favorites, new RoutedEventArgs() });
-            Assert(store.Load().Accounts.Count == 2, "Adding an account label did not persist it.");
+            // An old username label renders as disconnected, without inventing a login.
+            var refresh = (Task)typeof(AccountsWindow).GetMethod("RefreshAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(accounts, null)!;
+            refresh.GetAwaiter().GetResult();
+            var accountList = (ItemsControl)accounts.FindName("AccountsList");
+            Assert(accountList.Items.Count == 1, "The account card was not created.");
+            var accountVisual = (UIElement)accounts.Content;
+            accountVisual.Measure(new Size(860, 660));
+            accountVisual.Arrange(new Rect(0, 0, 860, 660));
+            accountVisual.UpdateLayout();
+            new RenderTargetBitmap(860, 660, 96, 96, PixelFormats.Pbgra32).Render(accountVisual);
+            Assert(ContainsText(accountVisual, "@Example_User") && ContainsText(accountVisual, "Sign in required on this PC"),
+                "The migrated account did not render as disconnected.");
+            var browser = login.FindName("Browser")!;
+            Assert(browser.GetType().GetProperty("Source")!.GetValue(browser) is null,
+                "The login browser navigated before its isolated profile was configured.");
             Assert(((TextBox)editor.FindName("NameBox")).Text == "Alpha game", "The favorite editor did not load the game.");
             var gameShortcutType = typeof(App).Assembly.GetType("Bloxstrap.Utility.GameShortcut", throwOnError: true)!;
             var parsePlace = gameShortcutType.GetMethod("ParsePlaceId", BindingFlags.Public | BindingFlags.Static)!;
@@ -68,6 +81,51 @@ internal static class Program
                 "A Roblox game link did not resolve to its place ID.");
             var versionOption = (Bloxstrap.UI.Elements.Controls.OptionControl)updates.FindName("InstalledVersionOption");
             Assert(((TextBlock)versionOption.InnerContent).Text.StartsWith("v"), "Update Center did not show the version.");
+
+            // Real Windows DPAPI protects sessions and binds each ciphertext to its account ID.
+            var vaultType = typeof(App).Assembly.GetType("Bloxstrap.AccountSessionVault", throwOnError: true)!;
+            var vault = Activator.CreateInstance(vaultType, new object[] { root })!;
+            var saveSession = vaultType.GetMethod("Save")!;
+            var readSession = vaultType.GetMethod("Read")!;
+            const string secret = "_|WARNING:-DO-NOT-SHARE-THIS.example-secret";
+            saveSession.Invoke(vault, new object[] { account.Id, secret });
+            var sessionsType = typeof(App).Assembly.GetType("Bloxstrap.AccountSessions", throwOnError: true)!;
+            var requireSaved = sessionsType.GetMethod("RequireSaved", BindingFlags.Static | BindingFlags.Public)!;
+            try
+            {
+                requireSaved.Invoke(null, new object[] { account.Id });
+                throw new InvalidOperationException("A legacy account label was treated as a login.");
+            }
+            catch (TargetInvocationException ex) when (ex.InnerException is BuffStrap.Accounts.RobloxAccountException) { }
+            store.Update(data => { data.Accounts.Single().UserId = 42; data.Accounts.Single().DisplayName = "Example Display"; });
+            requireSaved.Invoke(null, new object[] { account.Id });
+            string encryptedPath = Path.Combine(root, "AccountSessions", account.Id.ToString("N") + ".session");
+            byte[] encrypted = File.ReadAllBytes(encryptedPath);
+            Assert(encrypted.AsSpan().IndexOf(System.Text.Encoding.UTF8.GetBytes(secret)) < 0, "The session was stored in plaintext.");
+            Assert((string)readSession.Invoke(vault, new object[] { account.Id })! == secret, "DPAPI session round trip failed.");
+            Guid otherId = Guid.NewGuid();
+            File.WriteAllBytes(Path.Combine(root, "AccountSessions", otherId.ToString("N") + ".session"), encrypted);
+            try
+            {
+                readSession.Invoke(vault, new object[] { otherId });
+                throw new InvalidOperationException("A session was accepted under the wrong account ID.");
+            }
+            catch (TargetInvocationException ex) when (ex.InnerException is BuffStrap.Accounts.RobloxAccountException) { }
+            var lockMethod = vaultType.GetMethod("LockAsync")!;
+            using (var held = ((Task<FileStream>)lockMethod.Invoke(vault, new object[] { account.Id, CancellationToken.None })!).GetAwaiter().GetResult())
+            {
+                var waiting = (Task<FileStream>)lockMethod.Invoke(vault, new object[] { account.Id, CancellationToken.None })!;
+                Assert(!waiting.IsCompleted, "Two processes could rotate the same account concurrently.");
+                held.Dispose();
+                using var released = waiting.GetAwaiter().GetResult();
+            }
+            var redact = typeof(Logger).GetMethod("RedactSecrets", BindingFlags.Static | BindingFlags.NonPublic)!;
+            string redacted = (string)redact.Invoke(null, new object[] { "roblox-player:1+gameinfo:ticket-secret+foo .ROBLOSECURITY=cookie-secret; x-csrf-token: csrf-secret" })!;
+            Assert(!redacted.Contains("ticket-secret") && !redacted.Contains("cookie-secret") && !redacted.Contains("csrf-secret"),
+                "Recognizable credentials reached the logger.");
+            var accountArgs = new LaunchSettings(new[] { "-account", account.Id.ToString("D"), "-accountplace", "123" });
+            Assert(accountArgs.AccountFlag.Data == account.Id.ToString("D") && accountArgs.AccountPlaceFlag.Data == "123",
+                "The selected account launch arguments did not parse.");
 
             // Exercise the actual shortcut writer against a temporary path, never the runner's Desktop.
             var shortcutType = typeof(App).Assembly.GetType("Bloxstrap.Utility.FavoriteShortcut", throwOnError: true)!;

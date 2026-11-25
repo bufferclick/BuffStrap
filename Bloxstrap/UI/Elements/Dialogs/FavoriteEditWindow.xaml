@@ -19,7 +19,7 @@
             <ui:TextBox x:Name="FolderBox" Margin="0,5,0,12" PlaceholderText="Optional folder name" />
             <TextBlock Text="Account" />
             <ComboBox x:Name="AccountBox" Margin="0,5,0,0" />
-            <TextBlock Text="Assigned accounts open Roblox's game page for you to sign in or switch accounts before pressing Play."
+            <TextBlock Text="Sign in through Account Manager first. Assigned favorites use that account; they never fall back to another session."
                        Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
         </StackPanel>
         <Border Grid.Row="2" Padding="16" Background="{ui:ThemeResource SolidBackgroundFillColorSecondaryBrush}">
