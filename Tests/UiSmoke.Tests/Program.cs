@@ -444,6 +444,7 @@ internal static class Program
     [SupportedOSPlatform("windows10.0.17763.0")]
     private static void WaitForBrowser(RobloxLoginWindow window)
     {
+        Mark("Entering WebView2 readiness check");
         var ready = (Wpf.Ui.Controls.Button)window.FindName("SaveButton");
         var status = (TextBlock)window.FindName("StatusText");
         var frame = new DispatcherFrame();
@@ -464,6 +465,7 @@ internal static class Program
         var descriptor = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(TextBlock.TextProperty, typeof(TextBlock));
         ready.IsEnabledChanged += onReady;
         descriptor.AddValueChanged(status, onStatus);
+        Mark("WebView2 readiness observers attached; enabled=" + ready.IsEnabled);
         try
         {
             if (!ready.IsEnabled && !status.Text.StartsWith("Could not start", StringComparison.Ordinal))
