@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.Versioning;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
