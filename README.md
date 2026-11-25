@@ -66,6 +66,8 @@ dotnet publish .\Bloxstrap\Bloxstrap.csproj -c Release -r win-x64 --self-contain
 dotnet publish .\BuffStrapSetup\BuffStrapSetup.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
+The standard CI smoke test does not open a live WebView2 window; the optional profile test above needs a usable Windows desktop. It uses synthetic cookies and does not sign in or launch a game. Real sign-in and selected-account launches must be verified separately with accounts you own.
+
 The shared version is in `BuffStrap.Version.props`. The first release is **v1.0.0**. Use small patch increments for fixes (for example, v1.0.1 then v1.0.2), and increment the minor version when appropriate. A stable tag such as `v1.0.1` must match the version in that file. The release workflow builds both self-contained executables and publishes them as GitHub release assets; the installer and updater use the latest published stable release.
 
 ## Credits

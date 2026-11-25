@@ -22,6 +22,9 @@ internal static class Program
     [STAThread]
     private static int Main()
     {
+        if (Environment.GetEnvironmentVariable("BUFFSTRAP_TEST_WEBVIEW2_LOADER_ONLY") == "1")
+            return VerifyWebViewLoader();
+
         string root = Path.Combine(Path.GetTempPath(), "BuffStrap-ui-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try
@@ -307,6 +310,29 @@ internal static class Program
         }
     }
 
+    private static int VerifyWebViewLoader()
+    {
+        try
+        {
+            string version = CoreWebView2Environment.GetAvailableBrowserVersionString();
+            if (String.IsNullOrEmpty(version))
+                Console.WriteLine("SKIP WebView2 loader smoke: the runtime is not installed.");
+            else
+                Console.WriteLine("PASS single-file WebView2 loader; runtime " + version);
+            return 0;
+        }
+        catch (WebView2RuntimeNotFoundException)
+        {
+            Console.WriteLine("SKIP WebView2 loader smoke: the runtime is not installed.");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("FAIL single-file WebView2 loader: " + ex);
+            return 1;
+        }
+    }
+
     [SupportedOSPlatform("windows10.0.17763.0")]
     private static void VerifyPrivateWebViews(RobloxLoginWindow first, string root)
     {
@@ -348,8 +374,10 @@ internal static class Program
             Mark("Opening the first WebView2 window");
             first.SourceInitialized += (_, _) => Mark("First WebView2 window source initialized");
             var firstStatus = (TextBlock)first.FindName("StatusText");
+            var firstReady = (Wpf.Ui.Controls.Button)first.FindName("SaveButton");
             System.ComponentModel.DependencyPropertyDescriptor.FromProperty(TextBlock.TextProperty, typeof(TextBlock))
-                .AddValueChanged(firstStatus, (_, _) => Mark("Sign-in: " + firstStatus.Text));
+                .AddValueChanged(firstStatus, (_, _) => Mark("Sign-in: " + firstStatus.Text + "; button enabled=" + firstReady.IsEnabled));
+            firstReady.IsEnabledChanged += (_, _) => Mark("Sign-in button enabled=" + firstReady.IsEnabled);
             var firstControl = (WebView2)first.FindName("Browser");
             firstControl.Loaded += (_, _) => Mark("First WebView2 control loaded");
             BlockNavigation(firstControl);
@@ -423,7 +451,11 @@ internal static class Program
         timer.Tick += (_, _) => frame.Continue = false;
         DependencyPropertyChangedEventHandler onReady = (_, _) =>
         {
-            if (ready.IsEnabled) frame.Continue = false;
+            if (ready.IsEnabled)
+            {
+                Mark("WebView2 ready; ending dispatcher wait");
+                frame.Continue = false;
+            }
         };
         EventHandler onStatus = (_, _) =>
         {
@@ -438,6 +470,7 @@ internal static class Program
             {
                 timer.Start();
                 Dispatcher.PushFrame(frame);
+                Mark("WebView2 dispatcher wait ended");
             }
         }
         finally
