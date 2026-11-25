@@ -44,6 +44,7 @@ internal static class Program
             store.Update(data => { data.Accounts.Add(account); data.Games.Add(first); data.Games.Add(second); });
 
             // Loading the real BAML catches errors in names, controls, resources and event wiring.
+            Mark("Loading WPF windows");
             var menu = new LaunchMenuDialog();
             var favorites = new FavoritesWindow();
             var accounts = new AccountsWindow();
@@ -76,7 +77,7 @@ internal static class Program
             refresh.GetAwaiter().GetResult();
             var accountList = (ItemsControl)accounts.FindName("AccountsList");
             Assert(accountList.Items.Count == 1, "The account card was not created.");
-            var accountVisual = (UIElement)accounts.Content;
+            var accountVisual = (UIElement)accounts.Content!;
             accountVisual.Measure(new Size(860, 660));
             accountVisual.Arrange(new Rect(0, 0, 860, 660));
             accountVisual.UpdateLayout();
@@ -86,7 +87,10 @@ internal static class Program
             var browser = login.FindName("Browser")!;
             Assert(browser.GetType().GetProperty("Source")!.GetValue(browser) is null,
                 "The login browser navigated before its isolated profile was configured.");
-            VerifyPrivateWebViews(login, root);
+            if (Environment.GetEnvironmentVariable("BUFFSTRAP_TEST_WEBVIEW2") == "1")
+                VerifyPrivateWebViews(login, root);
+            else
+                Console.WriteLine("SKIP WebView2 runtime test: set BUFFSTRAP_TEST_WEBVIEW2=1 in an interactive Windows session.");
             Assert(((TextBox)editor.FindName("NameBox")).Text == "Alpha game", "The favorite editor did not load the game.");
             var gameShortcutType = typeof(App).Assembly.GetType("Bloxstrap.Utility.GameShortcut", throwOnError: true)!;
             var parsePlace = gameShortcutType.GetMethod("ParsePlaceId", BindingFlags.Public | BindingFlags.Static)!;
@@ -95,6 +99,7 @@ internal static class Program
             var versionOption = (Bloxstrap.UI.Elements.Controls.OptionControl)updates.FindName("InstalledVersionOption");
             Assert(((TextBlock)versionOption.InnerContent).Text.StartsWith("v"), "Update Center did not show the version.");
 
+            Mark("Checking DPAPI and account locking");
             // Real Windows DPAPI protects sessions and binds each ciphertext to its account ID.
             var vaultType = typeof(App).Assembly.GetType("Bloxstrap.AccountSessionVault", throwOnError: true)!;
             var vault = Activator.CreateInstance(vaultType, new object[] { root })!;
@@ -132,6 +137,7 @@ internal static class Program
                 held.Dispose();
                 using var released = waiting.GetAwaiter().GetResult();
             }
+            Mark("Checking the account service with a synthetic Roblox API");
             // End-to-end account service with a fake Roblox API, the real vault,
             // and the real favorites store: reconnecting keeps favorite IDs intact.
             const string loginSession = "synthetic-signin-session";
@@ -207,6 +213,7 @@ internal static class Program
             Assert(accountArgs.AccountFlag.Data == account.Id.ToString("D") && accountArgs.AccountPlaceFlag.Data == "123",
                 "The selected account launch arguments did not parse.");
 
+            Mark("Checking shortcuts and repair");
             // Exercise the actual shortcut writer against a temporary path, never the runner's Desktop.
             var shortcutType = typeof(App).Assembly.GetType("Bloxstrap.Utility.FavoriteShortcut", throwOnError: true)!;
             var create = shortcutType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static)!;
@@ -402,6 +409,12 @@ internal static class Program
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(_send(request));
         }
+    }
+
+    private static void Mark(string stage)
+    {
+        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+            Console.WriteLine("::notice title=Windows smoke test::" + stage);
     }
 
     private static bool ContainsText(DependencyObject root, string text)

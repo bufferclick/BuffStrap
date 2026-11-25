@@ -27,4 +27,5 @@ jobs:
         run: dotnet run --project .\Tests\ReleaseClient.Tests\ReleaseClient.Tests.csproj -c Debug --no-build
 
       - name: Smoke test WPF pages and shortcuts
+        timeout-minutes: 3
         run: dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Debug --no-build
