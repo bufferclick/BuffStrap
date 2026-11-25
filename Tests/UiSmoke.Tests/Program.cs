@@ -323,8 +323,15 @@ internal static class Program
         RobloxLoginWindow? second = null;
         try
         {
+            Mark("Opening a plain WPF window");
+            var probe = new Window { Width = 100, Height = 100, ShowInTaskbar = false };
+            probe.Show();
+            probe.Close();
+            Mark("Plain WPF window closed");
             Mark("Opening the first WebView2 window");
+            first.SourceInitialized += (_, _) => Mark("First WebView2 window source initialized");
             first.Show();
+            Mark("First WebView2 window shown; waiting for browser");
             WaitForBrowser(first);
             Mark("First WebView2 initialized");
             var firstBrowser = (WebView2)first.FindName("Browser");

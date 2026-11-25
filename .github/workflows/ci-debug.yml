@@ -32,7 +32,7 @@ jobs:
         run: dotnet run --project .\Tests\ReleaseClient.Tests\ReleaseClient.Tests.csproj -c Debug --no-build
 
       - name: Smoke test WPF pages and shortcuts
-        timeout-minutes: 3
+        timeout-minutes: ${{ inputs.test_webview2 && 2 || 3 }}
         env:
           BUFFSTRAP_TEST_WEBVIEW2: ${{ inputs.test_webview2 && '1' || '0' }}
         run: dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Debug --no-build
