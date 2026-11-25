@@ -361,32 +361,36 @@ internal static class Program
             Environment.Exit(1);
         }, null, TimeSpan.FromSeconds(90), Timeout.InfiniteTimeSpan);
 
+        // Run an ordinary dispatcher loop rather than blocking the UI thread in
+        // nested frames while WebView2 is delivering COM callbacks.
+        Exception? failure = null;
+        Dispatcher.CurrentDispatcher.BeginInvoke(new Action(async () =>
+        {
+            try { await VerifyPrivateWebViewsAsync(first, root); }
+            catch (Exception ex) { failure = ex; }
+            finally { Dispatcher.ExitAllFrames(); }
+        }));
+        Dispatcher.Run();
+        if (failure is not null)
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
+    [SupportedOSPlatform("windows10.0.17763.0")]
+    private static async Task VerifyPrivateWebViewsAsync(RobloxLoginWindow first, string root)
+    {
         RobloxLoginWindow? second = null;
         string? firstDir = null;
         string? secondDir = null;
         try
         {
-            Mark("Opening a plain WPF window");
-            var probe = new Window { Width = 100, Height = 100, ShowInTaskbar = false };
-            probe.Show();
-            probe.Close();
-            Mark("Plain WPF window closed");
             Mark("Opening the first WebView2 window");
-            first.SourceInitialized += (_, _) => Mark("First WebView2 window source initialized");
-            var firstStatus = (TextBlock)first.FindName("StatusText");
-            var firstReady = (Wpf.Ui.Controls.Button)first.FindName("SaveButton");
-            System.ComponentModel.DependencyPropertyDescriptor.FromProperty(TextBlock.TextProperty, typeof(TextBlock))
-                .AddValueChanged(firstStatus, (_, _) => Mark("Sign-in: " + firstStatus.Text + "; button enabled=" + firstReady.IsEnabled));
-            firstReady.IsEnabledChanged += (_, _) => Mark("Sign-in button enabled=" + firstReady.IsEnabled);
             var firstControl = (WebView2)first.FindName("Browser");
-            firstControl.Loaded += (_, _) => Mark("First WebView2 control loaded");
             BlockNavigation(firstControl);
+            Task firstReady = WaitForBrowserAsync(first);
             first.Show();
-            Mark("First WebView2 window shown; waiting for browser");
-            WaitForBrowser(first);
+            await firstReady;
             Mark("First WebView2 initialized");
-            var firstBrowser = (WebView2)first.FindName("Browser");
-            var firstWeb = firstBrowser.CoreWebView2;
+            var firstWeb = firstControl.CoreWebView2;
             firstWeb.Stop();
             Assert(firstWeb.Profile.IsInPrivateModeEnabled, "Sign-in was not InPrivate.");
             Assert(!firstWeb.Settings.IsPasswordAutosaveEnabled && !firstWeb.Settings.IsGeneralAutofillEnabled,
@@ -398,22 +402,26 @@ internal static class Program
             fakeCookie.IsSecure = true;
             fakeCookie.IsHttpOnly = true;
             firstWeb.CookieManager.AddOrUpdateCookie(fakeCookie);
-            Assert(Pump(firstWeb.CookieManager.GetCookiesAsync("https://www.roblox.com/")).Any(x => x.Name == ".ROBLOSECURITY" && x.Value == "synthetic-test-session"),
+            var firstCookies = await firstWeb.CookieManager.GetCookiesAsync("https://www.roblox.com/").WaitAsync(TimeSpan.FromSeconds(15));
+            Assert(firstCookies.Any(x => x.Name == ".ROBLOSECURITY" && x.Value == "synthetic-test-session"),
                 "The isolated sign-in cookie could not be read.");
 
             Mark("Opening the second WebView2 window");
             second = new RobloxLoginWindow();
-            BlockNavigation((WebView2)second.FindName("Browser"));
+            var secondControl = (WebView2)second.FindName("Browser");
+            BlockNavigation(secondControl);
+            Task secondReady = WaitForBrowserAsync(second);
             second.Show();
-            WaitForBrowser(second);
+            await secondReady;
             Mark("Second WebView2 initialized");
-            var secondWeb = ((WebView2)second.FindName("Browser")).CoreWebView2;
+            var secondWeb = secondControl.CoreWebView2;
             secondWeb.Stop();
             secondDir = Path.GetFullPath(secondWeb.Environment.UserDataFolder);
             Assert(secondWeb.Profile.IsInPrivateModeEnabled &&
                 !secondDir.Equals(firstDir, StringComparison.OrdinalIgnoreCase),
                 "Two sign-in windows shared a browser profile.");
-            Assert(!Pump(secondWeb.CookieManager.GetCookiesAsync("https://www.roblox.com/")).Any(x => x.Name == ".ROBLOSECURITY"),
+            var secondCookies = await secondWeb.CookieManager.GetCookiesAsync("https://www.roblox.com/").WaitAsync(TimeSpan.FromSeconds(15));
+            Assert(!secondCookies.Any(x => x.Name == ".ROBLOSECURITY"),
                 "One sign-in window leaked its cookie to another.");
         }
         finally
@@ -424,7 +432,7 @@ internal static class Program
         Mark("Waiting for WebView2 profile cleanup");
         DateTime cleanupDeadline = DateTime.UtcNow.AddSeconds(10);
         while ((Directory.Exists(firstDir) || Directory.Exists(secondDir)) && DateTime.UtcNow < cleanupDeadline)
-            Pump(Task.Delay(200));
+            await Task.Delay(200);
         Assert(!Directory.Exists(firstDir) && !Directory.Exists(secondDir), "Closed WebView2 profiles were not cleaned up.");
         Console.WriteLine("PASS isolated InPrivate WebView2 sign-in profiles and cleanup");
     }
@@ -442,46 +450,35 @@ internal static class Program
     }
 
     [SupportedOSPlatform("windows10.0.17763.0")]
-    private static void WaitForBrowser(RobloxLoginWindow window)
+    private static async Task WaitForBrowserAsync(RobloxLoginWindow window)
     {
-        Mark("Entering WebView2 readiness check");
         var ready = (Wpf.Ui.Controls.Button)window.FindName("SaveButton");
         var status = (TextBlock)window.FindName("StatusText");
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer(DispatcherPriority.Send) { Interval = TimeSpan.FromSeconds(45) };
-        timer.Tick += (_, _) => frame.Continue = false;
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         DependencyPropertyChangedEventHandler onReady = (_, _) =>
         {
-            if (ready.IsEnabled)
-            {
-                Mark("WebView2 ready; ending dispatcher wait");
-                frame.Continue = false;
-            }
+            if (ready.IsEnabled) completion.TrySetResult(true);
         };
         EventHandler onStatus = (_, _) =>
         {
-            if (status.Text.StartsWith("Could not start", StringComparison.Ordinal)) frame.Continue = false;
+            if (status.Text.StartsWith("Could not start", StringComparison.Ordinal))
+                completion.TrySetException(new InvalidOperationException("WebView2 sign-in failed to initialize: " + status.Text));
         };
         var descriptor = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(TextBlock.TextProperty, typeof(TextBlock));
         ready.IsEnabledChanged += onReady;
         descriptor.AddValueChanged(status, onStatus);
-        Mark("WebView2 readiness observers attached; enabled=" + ready.IsEnabled);
         try
         {
-            if (!ready.IsEnabled && !status.Text.StartsWith("Could not start", StringComparison.Ordinal))
-            {
-                timer.Start();
-                Dispatcher.PushFrame(frame);
-                Mark("WebView2 dispatcher wait ended");
-            }
+            if (ready.IsEnabled) return;
+            if (status.Text.StartsWith("Could not start", StringComparison.Ordinal))
+                throw new InvalidOperationException("WebView2 sign-in failed to initialize: " + status.Text);
+            await completion.Task.WaitAsync(TimeSpan.FromSeconds(40));
         }
         finally
         {
-            timer.Stop();
             ready.IsEnabledChanged -= onReady;
             descriptor.RemoveValueChanged(status, onStatus);
         }
-        Assert(ready.IsEnabled, "WebView2 sign-in failed to initialize: " + status.Text);
     }
 
     private static void Pump(Task task)
