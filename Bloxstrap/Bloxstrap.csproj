@@ -71,6 +71,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
     <PackageReference Include="Markdig" Version="0.40.0" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3065.39" />
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.183">
       <!--<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>-->
       <PrivateAssets>all</PrivateAssets>
@@ -86,6 +87,7 @@
     <ProjectReference Include="..\wpfui\src\Wpf.Ui\Wpf.Ui.csproj" />
     <Compile Include="..\Shared\ReleaseClient.cs" Link="ReleaseClient.cs" />
     <Compile Include="..\Shared\FavoritesStore.cs" Link="FavoritesStore.cs" />
+    <Compile Include="..\Shared\RobloxAccountClient.cs" Link="RobloxAccountClient.cs" />
     <Compile Include="..\Shared\BackupService.cs" Link="BackupService.cs" />
   </ItemGroup>
 

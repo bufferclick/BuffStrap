@@ -23,6 +23,8 @@ namespace Bloxstrap.UI.ViewModels.Installer
 
         public ICommand LaunchFavoritesCommand => new RelayCommand(LaunchFavorites);
 
+        public ICommand LaunchAccountsCommand => new RelayCommand(LaunchAccounts);
+
         public event EventHandler<NextAction>? CloseWindowRequest;
 
         private void LaunchSettings() => CloseWindowRequest?.Invoke(this, NextAction.LaunchSettings);
@@ -34,5 +36,7 @@ namespace Bloxstrap.UI.ViewModels.Installer
         private void LaunchAbout() => new MainWindow().ShowDialog();
 
         private void LaunchFavorites() => new FavoritesWindow().ShowDialog();
+
+        private void LaunchAccounts() => new AccountsWindow().ShowDialog();
     }
 }

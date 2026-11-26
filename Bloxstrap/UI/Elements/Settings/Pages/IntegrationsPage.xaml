@@ -121,7 +121,7 @@
         </controls:OptionControl>
 
         <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                   Text="Choose Default to leave Roblox's own theme selection unchanged. Roblox may offer additional curated themes in its settings. Arbitrary custom themes inside the Roblox app are not supported by BuffStrap." />
+                   Text="Choose Default to leave Roblox's own theme selection unchanged. Mods can change some local assets such as cursors or fonts, but do not reliably recolor every game UI. A separate screen tint is not a true Roblox theme; injected effects may be blocked or penalized by Roblox." />
 
         <TextBlock Text="{x:Static resources:Strings.Menu_Integrations_Custom_Title}" FontSize="20" FontWeight="Medium" Margin="0,16,0,0" />
         <TextBlock Text="{x:Static resources:Strings.Menu_Integrations_Custom_Description}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />

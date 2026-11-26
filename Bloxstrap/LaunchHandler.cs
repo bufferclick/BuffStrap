@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -53,6 +53,18 @@ namespace Bloxstrap
             {
                 App.Logger.WriteLine(LOG_IDENT, "Opening settings");
                 LaunchSettings();
+            }
+            else if (App.LaunchSettings.AccountFlag.Active || App.LaunchSettings.AccountPlaceFlag.Active)
+            {
+                if (!App.LaunchSettings.FavoriteFlag.Active && App.LaunchSettings.RobloxLaunchMode == LaunchMode.None &&
+                    Guid.TryParse(App.LaunchSettings.AccountFlag.Data, out Guid accountId) && accountId != Guid.Empty &&
+                    long.TryParse(App.LaunchSettings.AccountPlaceFlag.Data, NumberStyles.None, CultureInfo.InvariantCulture, out long placeId) && placeId > 0)
+                    FavoritesLauncher.LaunchAccount(accountId, placeId);
+                else
+                {
+                    Frontend.ShowMessageBox("The account launch request is invalid.", MessageBoxImage.Warning);
+                    App.Terminate();
+                }
             }
             else if (App.LaunchSettings.FavoriteFlag.Active)
             {

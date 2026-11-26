@@ -24,7 +24,7 @@ namespace Bloxstrap.UI.Elements.Dialogs
             FolderBox.Text = game?.Folder ?? "";
             var choices = new List<AccountChoice> { new() { Name = "Current Roblox session" } };
             choices.AddRange(accounts.OrderBy(x => x.Username, StringComparer.CurrentCultureIgnoreCase)
-                .Select(x => new AccountChoice { Id = x.Id, Name = x.Username }));
+                .Select(x => new AccountChoice { Id = x.Id, Name = x.ToString() }));
             AccountBox.ItemsSource = choices;
             AccountBox.SelectedItem = choices.FirstOrDefault(x => x.Id == game?.AccountId) ?? choices[0];
         }

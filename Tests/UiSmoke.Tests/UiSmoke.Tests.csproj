@@ -5,9 +5,14 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The launcher is referenced for testing, not run as a second apphost. -->
+    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../Bloxstrap/Bloxstrap.csproj" />
+    <!-- Publishing this test as a self-contained executable must not force the
+         referenced WinExe to publish itself without an RID (NETSDK1031). -->
+    <ProjectReference Include="../../Bloxstrap/Bloxstrap.csproj"
+                      GlobalPropertiesToRemove="SelfContained;PublishSingleFile;IncludeNativeLibrariesForSelfExtract" />
     <!-- The launcher uses root pack URIs, so mirror its theme resources in the
          test entry assembly while still instantiating the real launcher windows. -->
     <Page Include="../../Bloxstrap/UI/Style/Dark.xaml" Link="UI/Style/Dark.xaml" />

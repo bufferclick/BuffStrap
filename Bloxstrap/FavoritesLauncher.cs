@@ -1,3 +1,4 @@
+using BuffStrap.Accounts;
 using BuffStrap.Favorites;
 using System.Windows;
 
@@ -12,30 +13,47 @@ namespace Bloxstrap
             try
             {
                 FavoriteLaunchPlan plan = FavoriteLaunchPlan.Resolve(Store.Load(), id);
-                if (plan.RequiresBrowserSignIn)
+                if (plan.AccountId is Guid accountId)
                 {
-                    // Roblox does not offer a documented API for a launcher to select a
-                    // web account. Never silently launch using a different account.
-                    var answer = Frontend.ShowMessageBox(
-                        $"This favorite is assigned to {plan.AssignedUsername}. Roblox controls sign-in.\n\n" +
-                        "Open the official game page, sign in or switch to that account, and press Play there. " +
-                        "BuffStrap cannot verify or switch the browser account for you.",
-                        MessageBoxImage.Information, MessageBoxButton.OKCancel);
-                    if (answer == MessageBoxResult.OK)
-                        Utilities.ShellExecute(plan.WebsiteUrl);
-                    App.Terminate();
-                    return;
+                    // Never replace a missing, expired, or rejected account with the
+                    // current Roblox session. A fresh ticket is requested at launch.
+                    AccountSessions.RequireSaved(accountId);
+                    App.LaunchSettings.SelectedAccountId = accountId;
+                    App.LaunchSettings.SelectedAccountPlaceId = plan.PlaceId;
+                    App.LaunchSettings.RobloxLaunchArgs = "";
                 }
-
-                App.LaunchSettings.RobloxLaunchArgs = plan.PlayerUrl;
+                else
+                {
+                    App.LaunchSettings.RobloxLaunchArgs = plan.PlayerUrl;
+                }
                 LaunchHandler.LaunchRoblox(LaunchMode.Player);
             }
             catch (Exception ex)
             {
-                App.Logger.WriteException("FavoritesLauncher::Launch", ex);
-                Frontend.ShowMessageBox("Could not open this favorite.\n\n" + ex.Message, MessageBoxImage.Warning);
-                App.Terminate();
+                ShowLaunchError(ex);
             }
+        }
+
+        public static void LaunchAccount(Guid accountId, long placeId)
+        {
+            try
+            {
+                if (accountId == Guid.Empty || placeId <= 0) throw new RobloxAccountException("The account launch request is invalid.");
+                AccountSessions.RequireSaved(accountId);
+                App.LaunchSettings.SelectedAccountId = accountId;
+                App.LaunchSettings.SelectedAccountPlaceId = placeId;
+                App.LaunchSettings.RobloxLaunchArgs = "";
+                LaunchHandler.LaunchRoblox(LaunchMode.Player);
+            }
+            catch (Exception ex) { ShowLaunchError(ex); }
+        }
+
+        private static void ShowLaunchError(Exception ex)
+        {
+            // Never log arbitrary exceptions from an authenticated path.
+            string detail = ex is RobloxAccountException ? ex.Message : "Check that the favorite and account still exist, then try again.";
+            Frontend.ShowMessageBox("Could not start the game.\n\n" + detail, MessageBoxImage.Warning);
+            App.Terminate();
         }
 
         public static void StartFavorite(Guid id)
@@ -43,6 +61,17 @@ namespace Bloxstrap
             var start = new ProcessStartInfo { FileName = Paths.Application, UseShellExecute = false };
             start.ArgumentList.Add("-favorite");
             start.ArgumentList.Add(id.ToString("D"));
+            if (Process.Start(start) is null) throw new InvalidOperationException("Windows could not start BuffStrap.");
+        }
+
+        public static void StartAccountLaunch(Guid accountId, long placeId)
+        {
+            if (accountId == Guid.Empty || placeId <= 0) throw new ArgumentException("Invalid account or place ID.");
+            var start = new ProcessStartInfo { FileName = Paths.Application, UseShellExecute = false };
+            start.ArgumentList.Add("-account");
+            start.ArgumentList.Add(accountId.ToString("D"));
+            start.ArgumentList.Add("-accountplace");
+            start.ArgumentList.Add(placeId.ToString(CultureInfo.InvariantCulture));
             if (Process.Start(start) is null) throw new InvalidOperationException("Windows could not start BuffStrap.");
         }
 

@@ -39,6 +39,8 @@ namespace Bloxstrap
         private Dictionary<string, string> PackageDirectoryMap = null!;
         private LaunchMode _launchMode;
 
+        // A non-secret marker lets us inspect the join before minting a fresh ticket.
+        private const string AccountTicketPlaceholder = "BUFFSTRAP_PENDING_TICKET";
         private string _launchCommandLine = App.LaunchSettings.RobloxLaunchArgs;
         private Version? _latestVersion = null;
         private string _latestVersionGuid = null!;
@@ -697,6 +699,16 @@ namespace Bloxstrap
                 // reapplied on every launch because roblox can reset the file on its own.
                 AppStorageManager.Apply();
 
+                if (App.LaunchSettings.SelectedAccountId.HasValue)
+                {
+                    if (App.LaunchSettings.SelectedAccountPlaceId is not long placeId || placeId <= 0)
+                        throw new InvalidOperationException("The selected account has no valid game.");
+                    long tracker = (long)System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 1000000) * 1000000 +
+                        System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 1000000);
+                    _launchCommandLine = BuffStrap.Accounts.RobloxAccountClient.BuildPlayerUri(
+                        AccountTicketPlaceholder, placeId, tracker, DateTimeOffset.UtcNow, Guid.NewGuid());
+                }
+
                 GameJoin gameJoin = new();
 
                 _joinData = gameJoin.GetJoinDataByLaunchCommand(_launchCommandLine);
@@ -831,6 +843,32 @@ namespace Bloxstrap
                 }
             }
 
+            if (App.LaunchSettings.SelectedAccountId is Guid accountId)
+            {
+                try
+                {
+                    // Tickets are short-lived: obtain one only after updates, matching,
+                    // and any user-configured pre-launch integrations have finished.
+                    string ticket = await AccountSessions.CreateLaunchTicketAsync(accountId, _cancelTokenSource.Token);
+                    if (_cancelTokenSource.IsCancellationRequested) return;
+                    string marker = "gameinfo:" + AccountTicketPlaceholder;
+                    if (!_launchCommandLine.Contains(marker, StringComparison.Ordinal))
+                        throw new InvalidOperationException("The account launch command is invalid.");
+                    _launchCommandLine = _launchCommandLine.Replace(marker, "gameinfo:" + Uri.EscapeDataString(ticket), StringComparison.Ordinal);
+                    _launchCommandLine = Regex.Replace(_launchCommandLine, @"(?<=\+launchtime:)\d+(?=\+)",
+                        DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture), RegexOptions.CultureInvariant);
+                    startInfo.Arguments = _launchCommandLine;
+                }
+                catch (OperationCanceledException) when (_cancelTokenSource.IsCancellationRequested) { return; }
+                catch (Exception ex)
+                {
+                    // Do not log the exception, request, response, ticket, or command.
+                    Frontend.ShowMessageBox("Could not launch the selected account.\n\n" +
+                        UI.Elements.Dialogs.AccountsWindow.SafeError(ex), MessageBoxImage.Warning);
+                    return;
+                }
+            }
+
             // v2.2.0 - byfron will trip if we keep a process handle open for over a minute, so we're doing this now
             try
             {
@@ -845,6 +883,12 @@ namespace Bloxstrap
             catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
             {
                 // 1223 = ERROR_CANCELLED, gets thrown if a UAC prompt is cancelled
+                return;
+            }
+            catch (Exception) when (App.LaunchSettings.SelectedAccountId.HasValue)
+            {
+                // The process command contains a one-time ticket. Do not log it.
+                Frontend.ShowMessageBox("Windows could not start Roblox for the selected account. Try again or run the Player repair.", MessageBoxImage.Error);
                 return;
             }
             catch (Exception)

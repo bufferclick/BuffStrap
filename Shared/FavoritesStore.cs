@@ -10,8 +10,8 @@ using System.Threading;
 
 namespace BuffStrap.Favorites;
 
-// These records contain only game details and account labels. They never contain
-// Roblox passwords, cookies, authentication tickets, or other session material.
+// These records contain only game details and public account profile metadata.
+// They never contain Roblox passwords, cookies, tickets, or other session material.
 public sealed class FavoriteGame
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -25,7 +25,12 @@ public sealed class FavoriteAccount
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Username { get; set; } = "";
-    public override string ToString() => Username;
+    // Public profile metadata may be backed up. Sessions are kept separately.
+    // A null UserId also represents an account label saved by BuffStrap 1.0.1.
+    public long? UserId { get; set; }
+    public string DisplayName { get; set; } = "";
+    public override string ToString() => String.IsNullOrWhiteSpace(DisplayName) || DisplayName == Username
+        ? "@" + Username : DisplayName + "  @" + Username;
 }
 
 public sealed class RecentGame
@@ -44,10 +49,9 @@ public sealed class FavoritesData
 }
 
 /// <summary>An assigned account must never silently fall back to another session.</summary>
-public sealed record FavoriteLaunchPlan(long PlaceId, string? AssignedUsername)
+public sealed record FavoriteLaunchPlan(long PlaceId, Guid? AccountId, string? AssignedUsername)
 {
-    public bool RequiresBrowserSignIn => AssignedUsername is not null;
-    public string WebsiteUrl => $"https://www.roblox.com/games/{PlaceId}/";
+    public bool RequiresAccount => AccountId.HasValue;
     public string PlayerUrl => $"roblox://experiences/start?placeId={PlaceId}";
 
     public static FavoriteLaunchPlan Resolve(FavoritesData data, Guid id)
@@ -57,7 +61,7 @@ public sealed record FavoriteLaunchPlan(long PlaceId, string? AssignedUsername)
             ?? throw new InvalidOperationException("This favorite no longer exists. Its shortcut can be removed.");
         string? username = game.AccountId is Guid accountId
             ? data.Accounts.Single(x => x.Id == accountId).Username : null;
-        return new FavoriteLaunchPlan(game.PlaceId, username);
+        return new FavoriteLaunchPlan(game.PlaceId, game.AccountId, username);
     }
 }
 
@@ -139,12 +143,17 @@ public sealed class FavoritesStore
             throw new InvalidDataException("Favorites data has an unsupported format or size.");
 
         var accountIds = new HashSet<Guid>();
+        var userIds = new HashSet<long>();
         var usernames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var account in data.Accounts)
         {
             if (account is null || account.Id == Guid.Empty || !accountIds.Add(account.Id) ||
-                !IsValidUsername(account.Username) || !usernames.Add(account.Username))
-                throw new InvalidDataException("A saved account label is invalid or duplicated.");
+                !IsValidUsername(account.Username) || !usernames.Add(account.Username) ||
+                (account.UserId.HasValue && (account.UserId.Value <= 0 || !userIds.Add(account.UserId.Value))) ||
+                account.DisplayName is null || account.DisplayName.Length > 100 || account.DisplayName.Any(Char.IsControl) ||
+                account.DisplayName.Contains(".ROBLOSECURITY", StringComparison.OrdinalIgnoreCase) ||
+                account.DisplayName.Contains("_|WARNING:-DO-NOT-SHARE-THIS", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("A saved account profile is invalid or duplicated.");
         }
 
         var gameIds = new HashSet<Guid>();

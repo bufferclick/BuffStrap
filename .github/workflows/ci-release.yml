@@ -36,11 +36,25 @@ jobs:
       - name: Test releases, favorites and backups
         run: dotnet run --project .\Tests\ReleaseClient.Tests\ReleaseClient.Tests.csproj -c Release --no-build
 
-      - name: Smoke test WPF pages and shortcuts
+      - name: Smoke test WPF pages, accounts and isolated browser profiles
+        timeout-minutes: 3
+        env:
+          BUFFSTRAP_TEST_WEBVIEW2: '1'
         run: dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Release --no-build
 
       - name: Publish BuffStrap
         run: dotnet publish .\Bloxstrap\Bloxstrap.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:CommitHash=${{ github.sha }} -p:CommitRef=${{ github.ref_type }}/${{ github.ref_name }} -o .\publish\app
+
+      - name: Smoke-test the single-file WebView2 loader
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          dotnet publish .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\publish\ui-smoke
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:BUFFSTRAP_TEST_WEBVIEW2_LOADER_ONLY = '1'
+          $env:BUFFSTRAP_APP_BUNDLE = (Resolve-Path '.\publish\app\BuffStrap.exe').Path
+          & .\publish\ui-smoke\UiSmoke.Tests.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Publish setup
         run: dotnet publish .\BuffStrapSetup\BuffStrapSetup.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\publish\setup

@@ -96,36 +96,12 @@
                 </Grid>
             </TabItem>
             <TabItem Header="Accounts">
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                        <TextBlock Text="Account labels" FontSize="20" FontWeight="Medium" />
-                        <TextBlock Text="Add Roblox usernames and assign them to games. Roblox handles sign-in: for an assigned game, switch to that account on the official game page and press Play there. BuffStrap does not store passwords or sessions."
-                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                    </StackPanel>
-                    <Grid Grid.Row="1" Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <ui:TextBox x:Name="AccountNameBox" Grid.Column="0" PlaceholderText="Roblox username" Margin="0,0,8,0" />
-                        <ui:Button Grid.Column="1" Content="Add account" Icon="Add28" Click="AddAccount_Click" />
-                    </Grid>
-                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="AccountsList">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <ui:Card Margin="0,0,0,8">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding Username}" VerticalAlignment="Center" />
-                                            <ui:Button Grid.Column="1" Content="Remove" Click="RemoveAccount_Click" />
-                                        </Grid>
-                                    </ui:Card>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
+                <StackPanel Margin="12">
+                    <TextBlock Text="Your Roblox accounts" FontSize="20" FontWeight="Medium" />
+                    <TextBlock Text="Add or reconnect accounts in Account Manager, then assign one when editing a favorite. Roblox may require you to sign in again."
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextWrapping="Wrap" Margin="0,6,0,14" />
+                    <ui:Button Content="Open Account Manager" Icon="Person24" HorizontalAlignment="Left" Click="ManageAccounts_Click" />
+                </StackPanel>
             </TabItem>
         </TabControl>
     </Grid>
