@@ -77,7 +77,8 @@ namespace Bloxstrap.UI.Elements.Dialogs
                 FolderFilter.SelectedItem = folders.Contains(selection) ? selection : "All folders";
                 _refreshing = false;
                 RecentList.ItemsSource = _data.Recent.OrderByDescending(x => x.PlayedAtUtc).Select(x => new RecentRow { Game = x }).ToList();
-                string AccountName(FavoriteGame game) => _data.Accounts.FirstOrDefault(x => x.Id == game.AccountId)?.Username ?? "Current Roblox session";
+                string AccountName(FavoriteGame game) => _data.Accounts.FirstOrDefault(x => x.Id == game.AccountId) is FavoriteAccount account
+                    ? "@" + account.Username : "Current Roblox session";
                 _allRows = _data.Games.Select(game => new FavoriteRow
                 {
                     Game = game,

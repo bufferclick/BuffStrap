@@ -401,6 +401,7 @@ internal static class Program
             var available = shortcutType.GetMethod("GetAvailablePath", BindingFlags.Public | BindingFlags.Static)!;
             string Available(FavoriteGame game) => (string)available.Invoke(null, new object[] { root, game })!;
             Assert(Path.GetFileName(Available(new FavoriteGame { Name = "CON", PlaceId = 1 })) == "_CON.lnk" &&
+                Path.GetFileName(Available(new FavoriteGame { Name = "COM¹.txt", PlaceId = 1 })) == "_COM¹.txt.lnk" &&
                 Path.GetFileName(Available(new FavoriteGame { Name = "A:B?", PlaceId = 1 })) == "A_B_.lnk",
                 "Windows-invalid or reserved shortcut names were not made safe.");
             string unrelated = Path.Combine(root, "Collision.lnk");

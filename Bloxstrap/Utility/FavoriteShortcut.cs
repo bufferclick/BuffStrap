@@ -12,8 +12,8 @@ namespace Bloxstrap.Utility
             if (clean.Length > 120) clean = clean[..120].TrimEnd('.', ' ');
             if (clean.Length > 0 && Char.IsHighSurrogate(clean[^1])) clean = clean[..^1];
             if (String.IsNullOrWhiteSpace(clean)) clean = "Roblox game";
-            string stem = clean.Split('.')[0];
-            if (Regex.IsMatch(stem, @"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            string stem = clean.Split('.')[0].TrimEnd(' ');
+            if (Regex.IsMatch(stem, @"^(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[1-9¹²³]|LPT[1-9¹²³])$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
                 clean = "_" + clean;
             return clean;
         }
