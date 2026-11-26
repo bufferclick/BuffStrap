@@ -87,6 +87,22 @@ internal static class Program
             // Loading the real BAML catches errors in names, controls, resources and event wiring.
             Mark("Loading WPF windows");
             var menu = new LaunchMenuDialog();
+            var menuModel = (Bloxstrap.UI.ViewModels.Installer.LaunchMenuViewModel)menu.DataContext;
+            string originalRef = App.BuildMetadata.CommitRef;
+            string originalHash = App.BuildMetadata.CommitHash;
+            try
+            {
+                App.BuildMetadata.CommitRef = "branch/test";
+                App.BuildMetadata.CommitHash = "1234567890";
+                Assert(menuModel.Version.Contains("test build 1234567", StringComparison.Ordinal), "A branch build was not identified as a test build.");
+                App.BuildMetadata.CommitRef = "tag/v1.0.2";
+                Assert(!menuModel.Version.Contains("test build", StringComparison.Ordinal), "A tagged build was incorrectly identified as a test build.");
+            }
+            finally
+            {
+                App.BuildMetadata.CommitRef = originalRef;
+                App.BuildMetadata.CommitHash = originalHash;
+            }
             VerifyLaunchMenu(menu, "dark");
             App.Settings.Prop.Theme = Theme.Light;
             var lightMenu = new LaunchMenuDialog();

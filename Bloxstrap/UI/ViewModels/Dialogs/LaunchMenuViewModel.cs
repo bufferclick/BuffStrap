@@ -7,7 +7,17 @@ namespace Bloxstrap.UI.ViewModels.Installer
 {
     public class LaunchMenuViewModel
     {
-        public string Version => string.Format(Strings.Menu_About_Version, App.Version);
+        public string Version
+        {
+            get
+            {
+                string version = string.Format(Strings.Menu_About_Version, App.Version);
+                if (!App.IsActionBuild || App.IsProductionBuild) return version;
+                string commit = App.BuildMetadata.CommitHash;
+                string revision = String.IsNullOrEmpty(commit) ? "" : " " + commit[..Math.Min(commit.Length, 7)];
+                return version + " · test build" + revision;
+            }
+        }
 
         public ICommand LaunchSettingsCommand => new RelayCommand(LaunchSettings);
 
