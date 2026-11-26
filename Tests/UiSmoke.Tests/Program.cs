@@ -127,26 +127,49 @@ internal static class Program
             search.Text = "";
             folder.SelectedItem = "Folder: Friends";
             Assert(list.Items.Count == 1, "Folder filtering did not work.");
+            // Preview binding uses real metadata and a decoded icon; failures do
+            // not remove the favorite or prevent Play. All data here is synthetic.
+            object row = list.Items[0];
+            var applyPreview = row.GetType().GetMethod("ApplyPreview")!;
+            applyPreview.Invoke(row, new object?[] { null });
+            Assert(((string)row.GetType().GetProperty("Description")!.GetValue(row)!).Contains("unavailable"), "Offline preview had no useful fallback.");
+            var mockPreview = new RobloxGamePreview
+            {
+                PlaceId = first.PlaceId, Name = "Alpha game", Description = "Explore a world with your friends.",
+                Creator = "Example Creator", Playing = 1234, DetailsAvailable = true,
+                IconPng = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=")
+            };
+            applyPreview.Invoke(row, new object[] { mockPreview });
+            Assert(row.GetType().GetProperty("Icon")!.GetValue(row) is BitmapSource &&
+                (string)row.GetType().GetProperty("Description")!.GetValue(row)! == mockPreview.Description,
+                "The public game icon or description was not applied to the favorite.");
             // Exercise templates and bindings without showing an interactive window.
             var visual = (UIElement)favorites.Content;
-            visual.Measure(new Size(900, 650));
-            visual.Arrange(new Rect(0, 0, 900, 650));
+            visual.Measure(new Size(980, 720));
+            visual.Arrange(new Rect(0, 0, 980, 720));
             visual.UpdateLayout();
-            var bitmap = new RenderTargetBitmap(900, 650, 96, 96, PixelFormats.Pbgra32);
-            bitmap.Render(visual);
-            Assert(ContainsText(visual, "Alpha game"), "A favorite row did not render its bound name.");
-            // An old username label renders as disconnected, without inventing a login.
+            new RenderTargetBitmap(980, 720, 96, 96, PixelFormats.Pbgra32).Render(visual);
+            Assert(ContainsText(visual, "Alpha game") && ContainsText(visual, mockPreview.Description),
+                "A favorite row did not render its bound title and description.");
+            SaveWindowPreview(favorites, visual, 980, 720, "favorites-dark.png");
+            // An old username label renders as disconnected, without inventing a login or selection.
             var refresh = (Task)typeof(AccountsWindow).GetMethod("RefreshAsync", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(accounts, null)!;
             refresh.GetAwaiter().GetResult();
-            var accountList = (ItemsControl)accounts.FindName("AccountsList");
-            Assert(accountList.Items.Count == 1, "The account card was not created.");
+            var accountList = (ListBox)accounts.FindName("AccountsList");
+            Assert(accountList.Items.Count == 1 && accountList.SelectedItem is null, "The account list invented a selected account.");
             var accountVisual = (UIElement)accounts.Content!;
-            accountVisual.Measure(new Size(860, 660));
-            accountVisual.Arrange(new Rect(0, 0, 860, 660));
+            accountVisual.Measure(new Size(620, 730));
+            accountVisual.Arrange(new Rect(0, 0, 620, 730));
             accountVisual.UpdateLayout();
-            new RenderTargetBitmap(860, 660, 96, 96, PixelFormats.Pbgra32).Render(accountVisual);
+            new RenderTargetBitmap(620, 730, 96, 96, PixelFormats.Pbgra32).Render(accountVisual);
             Assert(ContainsText(accountVisual, "@Example_User") && ContainsText(accountVisual, "Sign in required on this PC"),
                 "The migrated account did not render as disconnected.");
+            SaveWindowPreview(accounts, accountVisual, 620, 730, "accounts-dark.png");
+            accountList.SelectedIndex = 0;
+            Assert(!((Wpf.Ui.Controls.Button)accounts.FindName("PlayAccountButton")).IsEnabled &&
+                ((Wpf.Ui.Controls.Button)accounts.FindName("ReconnectButton")).IsEnabled &&
+                ((TextBlock)accounts.FindName("SelectionHint")).Text.Contains("Selected for this launch"),
+                "A disconnected account could play, or the selection was misrepresented.");
             var browser = login.FindName("Browser")!;
             Assert(browser.GetType().GetProperty("Source")!.GetValue(browser) is null,
                 "The login browser navigated before its isolated profile was configured.");
@@ -170,6 +193,14 @@ internal static class Program
             var readSession = vaultType.GetMethod("Read")!;
             const string secret = "_|WARNING:-DO-NOT-SHARE-THIS.example-secret";
             saveSession.Invoke(vault, new object[] { account.Id, secret });
+            // A selected account becomes playable only after public identity and
+            // a local encrypted session both exist; selection alone is not login.
+            var accountCard = accountList.Items[0];
+            var displayedAccount = (FavoriteAccount)accountCard.GetType().GetProperty("Account")!.GetValue(accountCard)!;
+            displayedAccount.UserId = 42;
+            typeof(AccountsWindow).GetMethod("UpdateSelection", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(accounts, null);
+            Assert(((Wpf.Ui.Controls.Button)accounts.FindName("PlayAccountButton")).IsEnabled,
+                "A selected account with a saved session could not be launched.");
             var sessionsType = typeof(App).Assembly.GetType("Bloxstrap.AccountSessions", throwOnError: true)!;
             var requireSaved = sessionsType.GetMethod("RequireSaved", BindingFlags.Static | BindingFlags.Public)!;
             try
@@ -344,8 +375,11 @@ internal static class Program
             string linkPath = Path.Combine(root, "favorite.lnk");
             create.Invoke(null, new object[] { first, new List<string> { linkPath }, false });
             var link = ShellLink.Shortcut.ReadFromFile(linkPath);
-            Assert(link.StringData.CommandLineArguments == $"-favorite {first.Id:D}", "Shortcut did not target the saved favorite.");
-            Assert(link.ExtraData.EnvironmentVariableDataBlock.TargetUnicode == Path.Combine(root, "BuffStrap.exe"), "Shortcut pointed to the wrong launcher.");
+            Assert(link.StringData.CommandLineArguments == $"-favorite {first.Id:D} -childlaunch", "Shortcut did not target the saved favorite safely.");
+            Assert(link.ExtraData.EnvironmentVariableDataBlock.TargetUnicode == Environment.ProcessPath, "Shortcut pointed to the older installed launcher instead of the running build.");
+            var shortcutSettings = new LaunchSettings(link.StringData.CommandLineArguments.Split(' '));
+            Assert(shortcutSettings.FavoriteFlag.Data == first.Id.ToString("D") && shortcutSettings.ChildLaunchFlag.Active && shortcutSettings.BypassUpdateCheck,
+                "The shortcut could trigger an installation or lose its favorite ID.");
             byte[] originalLink = File.ReadAllBytes(linkPath);
             try
             {
@@ -355,14 +389,47 @@ internal static class Program
             catch (TargetInvocationException ex) when (ex.InnerException is IOException) { }
             Assert(File.ReadAllBytes(linkPath).SequenceEqual(originalLink), "The existing shortcut was changed without consent.");
             create.Invoke(null, new object[] { first, new List<string> { linkPath }, true });
-            Assert(ShellLink.Shortcut.ReadFromFile(linkPath).StringData.CommandLineArguments == $"-favorite {first.Id:D}",
+            Assert(ShellLink.Shortcut.ReadFromFile(linkPath).StringData.CommandLineArguments == $"-favorite {first.Id:D} -childlaunch",
                 "Consented shortcut replacement failed.");
             var getPaths = shortcutType.GetMethod("GetPaths", BindingFlags.Public | BindingFlags.Static)!;
             var choices = (IReadOnlyList<string>)getPaths.Invoke(null, new object[] { first, true, true })!;
             var desktop = (IReadOnlyList<string>)getPaths.Invoke(null, new object[] { first, true, false })!;
             var startMenu = (IReadOnlyList<string>)getPaths.Invoke(null, new object[] { first, false, true })!;
-            Assert(choices.Count == 2 && choices[0] == desktop.Single() && choices[1] == startMenu.Single() && choices[0] != choices[1],
-                "Desktop, Start menu and both shortcut choices did not work.");
+            Assert(choices.Count == 2 && choices[0] == desktop.Single() && choices[1] == startMenu.Single() && choices[0] != choices[1] &&
+                choices.All(x => Path.GetFileName(x) == "Alpha game.lnk"),
+                "Shortcut locations or the plain favorite name were incorrect.");
+            var available = shortcutType.GetMethod("GetAvailablePath", BindingFlags.Public | BindingFlags.Static)!;
+            string Available(FavoriteGame game) => (string)available.Invoke(null, new object[] { root, game })!;
+            Assert(Path.GetFileName(Available(new FavoriteGame { Name = "CON", PlaceId = 1 })) == "_CON.lnk" &&
+                Path.GetFileName(Available(new FavoriteGame { Name = "A:B?", PlaceId = 1 })) == "A_B_.lnk",
+                "Windows-invalid or reserved shortcut names were not made safe.");
+            string unrelated = Path.Combine(root, "Collision.lnk");
+            File.WriteAllText(unrelated, "unrelated user file");
+            var collision = new FavoriteGame { Name = "Collision", PlaceId = 123 };
+            string collisionPath = Available(collision);
+            Assert(Path.GetFileName(collisionPath) == "Collision (2).lnk", "An unrelated file was not avoided.");
+            create.Invoke(null, new object[] { collision, new List<string> { collisionPath }, false });
+            Assert(Available(collision) == collisionPath, "An existing shortcut for the same favorite was not found.");
+            var duplicate = new FavoriteGame { Name = "Collision", PlaceId = 456 };
+            Assert(Path.GetFileName(Available(duplicate)) == "Collision (3).lnk", "Another favorite could overwrite the first one's shortcut.");
+            try
+            {
+                create.Invoke(null, new object[] { collision, new List<string> { unrelated }, true });
+                throw new InvalidOperationException("A different file was overwritten after consent to update a shortcut.");
+            }
+            catch (TargetInvocationException ex) when (ex.InnerException is IOException) { }
+            Assert(File.ReadAllText(unrelated) == "unrelated user file", "An unrelated file was modified.");
+
+            string oldLink = Path.Combine(root, $"Old name (BuffStrap-{first.Id:N}).lnk");
+            string impostor = Path.Combine(root, $"Unrelated (BuffStrap-{first.Id:N}).lnk");
+            ShellLink.Shortcut.CreateShortcut(Path.Combine(root, "BuffStrap.exe"), $"-favorite {first.Id:D}", Path.Combine(root, "BuffStrap.exe"), 0).WriteToFile(oldLink);
+            ShellLink.Shortcut.CreateShortcut(Path.Combine(root, "Unrelated.exe"), $"-favorite {first.Id:D}", Path.Combine(root, "Unrelated.exe"), 0).WriteToFile(impostor);
+            var findOld = shortcutType.GetMethod("FindLegacyPaths", BindingFlags.Public | BindingFlags.Static)!;
+            var removeOld = shortcutType.GetMethod("RemoveLegacyPaths", BindingFlags.Public | BindingFlags.Static)!;
+            var oldLinks = (IReadOnlyList<string>)findOld.Invoke(null, new object[] { first, new List<string> { linkPath } })!;
+            Assert(oldLinks.Count == 1 && oldLinks.Single() == oldLink, "Legacy migration included an unrelated shortcut or missed an old one.");
+            int removed = (int)removeOld.Invoke(null, new object[] { first, new List<string> { oldLink, impostor } })!;
+            Assert(removed == 1 && !File.Exists(oldLink) && File.Exists(impostor), "Legacy cleanup touched an unrelated shortcut.");
 
             var repairType = typeof(App).Assembly.GetType("Bloxstrap.InstallationRepair", throwOnError: true)!;
             repairType.GetMethod("SchedulePlayerReinstall", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, null);
@@ -746,6 +813,26 @@ internal static class Program
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var output = File.Create(Path.Combine(snapshotDirectory, "launch-menu-" + theme + ".png"));
+        encoder.Save(output);
+    }
+
+    private static void SaveWindowPreview(Window window, UIElement visual, int width, int height, string name)
+    {
+        string? directory = Environment.GetEnvironmentVariable("BUFFSTRAP_MENU_SNAPSHOT_DIR");
+        if (String.IsNullOrEmpty(directory)) return;
+        Directory.CreateDirectory(directory);
+        var drawing = new DrawingVisual();
+        using (var context = drawing.RenderOpen())
+        {
+            var bounds = new Rect(0, 0, width, height);
+            context.DrawRectangle(window.Background ?? Brushes.Black, null, bounds);
+            context.DrawRectangle(new VisualBrush(visual), null, bounds);
+        }
+        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(drawing);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var output = File.Create(Path.Combine(directory, name));
         encoder.Save(output);
     }
 
