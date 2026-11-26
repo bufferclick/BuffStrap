@@ -34,7 +34,10 @@ internal static class Program
             var paths = typeof(App).Assembly.GetType("Bloxstrap.Paths", throwOnError: true)!;
             paths.GetMethod("Initialize", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, new object[] { root });
             App.Settings.Prop.Theme = Theme.Dark;
-            var app = new App();
+            // Application queues OnStartup as soon as a dispatcher is pumped.
+            // Use a test subclass so a browser smoke test cannot run the real
+            // installer/launcher startup or mutate the runner's Roblox setup.
+            var app = new SmokeApp();
             app.InitializeComponent();
             // The production handler opens a modal dialog, which cannot be dismissed
             // on a headless runner. Fail the test instead of hanging indefinitely.
@@ -310,27 +313,102 @@ internal static class Program
         }
     }
 
+    private sealed class SmokeApp : App
+    {
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            // Calling App.OnStartup would launch the real installer or Player.
+            Mark("Smoke-test application dispatcher started");
+        }
+    }
+
     private static int VerifyWebViewLoader()
     {
         try
         {
+            string? appBundle = Environment.GetEnvironmentVariable("BUFFSTRAP_APP_BUNDLE");
+            if (!String.IsNullOrEmpty(appBundle))
+                VerifyAppBundleHasWebViewLoader(appBundle);
             string version = CoreWebView2Environment.GetAvailableBrowserVersionString();
             if (String.IsNullOrEmpty(version))
+            {
                 Console.WriteLine("SKIP WebView2 loader smoke: the runtime is not installed.");
+                Mark("SKIP single-file WebView2 loader: runtime not installed");
+            }
             else
-                Console.WriteLine("PASS single-file WebView2 loader; runtime " + version);
+            {
+                Console.WriteLine("PASS single-file test app WebView2 loader; runtime " + version);
+                Mark("PASS single-file test app WebView2 loader resolved runtime " + version);
+            }
             return 0;
         }
         catch (WebView2RuntimeNotFoundException)
         {
             Console.WriteLine("SKIP WebView2 loader smoke: the runtime is not installed.");
+            Mark("SKIP single-file WebView2 loader: runtime not installed");
             return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine("FAIL single-file WebView2 loader: " + ex);
+            if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+            {
+                string details = ex.Message.Replace("%", "%25").Replace("\r", "%0D").Replace("\n", "%0A");
+                Console.WriteLine("::error title=Single-file WebView2 check failed::" + details);
+            }
             return 1;
         }
+    }
+
+    // Inspect the release executable's .NET bundle manifest, not merely the
+    // publish directory: only BuffStrap.exe is uploaded as a release asset.
+    // Format: https://github.com/dotnet/runtime/tree/v6.0.36/src/installer/managed/Microsoft.NET.HostModel/Bundle
+    private static void VerifyAppBundleHasWebViewLoader(string path)
+    {
+        using var stream = File.OpenRead(path);
+        byte[] prefix = new byte[(int)Math.Min(stream.Length, 8L * 1024 * 1024)];
+        int read = 0;
+        while (read < prefix.Length)
+        {
+            int n = stream.Read(prefix, read, prefix.Length - read);
+            if (n == 0) break;
+            read += n;
+        }
+        // SHA-256 of ".net core bundle", as used by the .NET apphost.
+        byte[] signature = Convert.FromHexString("8b1202b96a612038727b930214d7a03213f5b9e6efae3318ee3b2dce24b36aae");
+        int marker = prefix.AsSpan(0, read).IndexOf(signature);
+        if (marker < sizeof(long)) throw new InvalidDataException("The release app is not a recognized single-file bundle.");
+        long headerOffset = BitConverter.ToInt64(prefix, marker - sizeof(long));
+        if (headerOffset <= 0 || headerOffset >= stream.Length) throw new InvalidDataException("Invalid app bundle header.");
+        stream.Position = headerOffset;
+        using var reader = new BinaryReader(stream);
+        uint major = reader.ReadUInt32();
+        _ = reader.ReadUInt32(); // minor
+        int count = reader.ReadInt32();
+        _ = reader.ReadString(); // bundle ID
+        if ((major != 2 && major != 6) || count < 1 || count > 10000)
+            throw new InvalidDataException("Unsupported app bundle manifest.");
+        for (int i = 0; i < 5; i++) _ = reader.ReadInt64(); // config offsets/sizes and flags
+        bool found = false;
+        var candidates = new List<string>();
+        for (int i = 0; i < count; i++)
+        {
+            long offset = reader.ReadInt64();
+            long size = reader.ReadInt64();
+            if (major >= 6) _ = reader.ReadInt64(); // compressed size
+            byte type = reader.ReadByte();
+            string name = reader.ReadString();
+            if (name.EndsWith("WebView2Loader.dll", StringComparison.OrdinalIgnoreCase))
+            {
+                candidates.Add(name + " (type " + type + ")");
+                if (name.Equals("WebView2Loader.dll", StringComparison.OrdinalIgnoreCase) && type == 2 &&
+                    offset > 0 && size > 0 && offset <= stream.Length - size)
+                    found = true;
+            }
+        }
+        Mark("App bundle WebView2 loader entries: " + (candidates.Count == 0 ? "none" : String.Join(", ", candidates)));
+        Assert(found, "The released app bundle does not contain the native WebView2 loader at its root.");
+        Mark("PASS release app bundle contains the native WebView2 loader");
     }
 
     [SupportedOSPlatform("windows10.0.17763.0")]
@@ -367,7 +445,11 @@ internal static class Program
         Dispatcher.CurrentDispatcher.BeginInvoke(new Action(async () =>
         {
             try { await VerifyPrivateWebViewsAsync(first, root); }
-            catch (Exception ex) { failure = ex; }
+            catch (Exception ex)
+            {
+                failure = ex;
+                Mark("WebView2 runtime test failed: " + ex.Message);
+            }
             finally { Dispatcher.ExitAllFrames(); }
         }));
         Dispatcher.Run();

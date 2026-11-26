@@ -50,6 +50,7 @@ jobs:
           dotnet publish .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\publish\ui-smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:BUFFSTRAP_TEST_WEBVIEW2_LOADER_ONLY = '1'
+          $env:BUFFSTRAP_APP_BUNDLE = (Resolve-Path '.\publish\app\BuffStrap.exe').Path
           & .\publish\ui-smoke\UiSmoke.Tests.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
