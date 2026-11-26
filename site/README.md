@@ -4,4 +4,4 @@ This is a static site: `index.html` lives in the repository root, and the styles
 
 The download buttons and PowerShell command use the latest stable `BuffStrapSetup.exe` release asset. Release version and download totals are loaded from the public GitHub API when available; if the API is blocked or rate-limited, the page falls back to links to the releases page. No GitHub star count is displayed.
 
-The interface visuals are illustrative previews, not screenshots of the released application. BuffStrap's existing logo and wordmarks are included here for a self-contained deployment. The Inter font is distributed under the license in `fonts/INTER-LICENSE.txt`.
+BuffStrap's existing logo and wordmarks are included here for a self-contained deployment. The Inter font is distributed under the license in `fonts/INTER-LICENSE.txt`.
