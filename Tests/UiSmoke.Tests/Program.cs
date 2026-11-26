@@ -34,10 +34,9 @@ internal static class Program
             var paths = typeof(App).Assembly.GetType("Bloxstrap.Paths", throwOnError: true)!;
             paths.GetMethod("Initialize", BindingFlags.Public | BindingFlags.Static)!.Invoke(null, new object[] { root });
             App.Settings.Prop.Theme = Theme.Dark;
-            // Application queues OnStartup as soon as a dispatcher is pumped.
-            // Use a test subclass so a browser smoke test cannot run the real
-            // installer/launcher startup or mutate the runner's Roblox setup.
-            var app = new SmokeApp();
+            // The test pumps a dispatcher, but must never run the real
+            // installer/launcher startup on the runner's Windows profile.
+            var app = CreateAppWithoutStartup();
             app.InitializeComponent();
             // The production handler opens a modal dialog, which cannot be dismissed
             // on a headless runner. Fail the test instead of hanging indefinitely.
@@ -313,13 +312,26 @@ internal static class Program
         }
     }
 
-    private sealed class SmokeApp : App
+    private static App CreateAppWithoutStartup()
     {
-        protected override void OnStartup(StartupEventArgs e)
+        // WPF Application's constructor queues its OnStartup callback at Send
+        // priority. Capture and abort that operation before any dispatcher is
+        // pumped, keeping the real App type and its compiled XAML resources.
+        var dispatcher = Dispatcher.CurrentDispatcher;
+        int threadId = Environment.CurrentManagedThreadId;
+        var posted = new List<DispatcherOperation>();
+        DispatcherHookEventHandler capture = (_, args) =>
         {
-            // Calling App.OnStartup would launch the real installer or Player.
-            Mark("Smoke-test application dispatcher started");
-        }
+            if (Environment.CurrentManagedThreadId == threadId && args.Operation.Priority == DispatcherPriority.Send)
+                posted.Add(args.Operation);
+        };
+        dispatcher.Hooks.OperationPosted += capture;
+        App app;
+        try { app = new App(); }
+        finally { dispatcher.Hooks.OperationPosted -= capture; }
+        if (posted.Count != 1 || !posted[0].Abort())
+            throw new InvalidOperationException("Could not safely suppress the application's startup in the smoke test.");
+        return app;
     }
 
     private static int VerifyWebViewLoader()
