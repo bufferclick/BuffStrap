@@ -1,12 +1,16 @@
 using BuffStrap.Favorites;
 using System.Windows;
 using System.Windows.Controls;
+using System.ComponentModel;
+using System.Windows.Media.Imaging;
 
 namespace Bloxstrap.UI.Elements.Dialogs
 {
     public partial class FavoritesWindow
     {
         private FavoritesData _data = new();
+        private List<FavoriteRow> _allRows = new();
+        private readonly CancellationTokenSource _lifetime = new();
         private bool _refreshing;
         private bool _ready;
 
@@ -14,14 +18,41 @@ namespace Bloxstrap.UI.Elements.Dialogs
         {
             InitializeComponent();
             _ready = true;
+            Closed += (_, _) => _lifetime.Cancel();
             Reload();
         }
 
-        private sealed class FavoriteRow
+        private sealed class FavoriteRow : INotifyPropertyChanged
         {
             public FavoriteGame Game { get; init; } = null!;
             public string Name => Game.Name;
             public string Detail { get; init; } = "";
+            public bool PreviewRequested { get; set; }
+            public string Metadata { get; private set; } = "Loading Roblox details…";
+            public string Description { get; private set; } = "Loading game description…";
+            public BitmapSource? Icon { get; private set; }
+            public event PropertyChangedEventHandler? PropertyChanged;
+
+            public void ApplyPreview(RobloxGamePreview? preview)
+            {
+                if (preview is null || !preview.DetailsAvailable)
+                {
+                    Metadata = $"Place {Game.PlaceId}";
+                    Description = "Game details unavailable right now. Reopen Favorites to retry.";
+                }
+                else
+                {
+                    var parts = new List<string>();
+                    if (!String.IsNullOrWhiteSpace(preview.Name) && !preview.Name.Equals(Name, StringComparison.OrdinalIgnoreCase)) parts.Add(preview.Name);
+                    if (!String.IsNullOrWhiteSpace(preview.Creator)) parts.Add("By " + preview.Creator);
+                    if (preview.Playing.HasValue) parts.Add(preview.Playing.Value.ToString("N0") + " playing");
+                    Metadata = parts.Count > 0 ? String.Join("  •  ", parts) : $"Place {Game.PlaceId}";
+                    Description = String.IsNullOrWhiteSpace(preview.Description) ? "No description provided by the creator." : preview.Description;
+                }
+                Icon = GamePreviews.MakeImage(preview?.IconPng);
+                foreach (string name in new[] { nameof(Metadata), nameof(Description), nameof(Icon) })
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            }
         }
 
         private sealed class RecentRow
@@ -46,6 +77,12 @@ namespace Bloxstrap.UI.Elements.Dialogs
                 FolderFilter.SelectedItem = folders.Contains(selection) ? selection : "All folders";
                 _refreshing = false;
                 RecentList.ItemsSource = _data.Recent.OrderByDescending(x => x.PlayedAtUtc).Select(x => new RecentRow { Game = x }).ToList();
+                string AccountName(FavoriteGame game) => _data.Accounts.FirstOrDefault(x => x.Id == game.AccountId)?.Username ?? "Current Roblox session";
+                _allRows = _data.Games.Select(game => new FavoriteRow
+                {
+                    Game = game,
+                    Detail = $"Place {game.PlaceId}  •  {(String.IsNullOrWhiteSpace(game.Folder) ? "Unfiled" : game.Folder)}  •  {AccountName(game)}"
+                }).ToList();
                 RefreshGames();
             }
             catch (Exception ex) { ShowError("Could not read favorites", ex); }
@@ -57,23 +94,41 @@ namespace Bloxstrap.UI.Elements.Dialogs
             string filter = FolderFilter.SelectedItem as string ?? "All folders";
             string search = SearchBox.Text.Trim();
             string AccountName(FavoriteGame game) => _data.Accounts.FirstOrDefault(x => x.Id == game.AccountId)?.Username ?? "Current Roblox session";
-            var rows = _data.Games
-                .Where(game => filter == "All folders" || (filter == "Unfiled" ? String.IsNullOrWhiteSpace(game.Folder) :
-                    filter.StartsWith("Folder: ", StringComparison.Ordinal) && game.Folder.Equals(filter[8..], StringComparison.OrdinalIgnoreCase)))
-                .Where(game => String.IsNullOrEmpty(search) || game.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    game.Folder.Contains(search, StringComparison.OrdinalIgnoreCase) || game.PlaceId.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    AccountName(game).Contains(search, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(game => game.Folder, StringComparer.CurrentCultureIgnoreCase)
-                .ThenBy(game => game.Name, StringComparer.CurrentCultureIgnoreCase)
-                .Select(game => new FavoriteRow
-                {
-                    Game = game,
-                    Detail = $"Place {game.PlaceId} • {(String.IsNullOrWhiteSpace(game.Folder) ? "Unfiled" : game.Folder)} • {AccountName(game)}"
-                }).ToList();
+            var rows = _allRows
+                .Where(row => filter == "All folders" || (filter == "Unfiled" ? String.IsNullOrWhiteSpace(row.Game.Folder) :
+                    filter.StartsWith("Folder: ", StringComparison.Ordinal) && row.Game.Folder.Equals(filter[8..], StringComparison.OrdinalIgnoreCase)))
+                .Where(row => String.IsNullOrEmpty(search) || row.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    row.Game.Folder.Contains(search, StringComparison.OrdinalIgnoreCase) || row.Game.PlaceId.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    AccountName(row.Game).Contains(search, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(row => row.Game.Folder, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(row => row.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+            EmptyGames.Text = _allRows.Count == 0 ? "No favorites yet. Add a game to start your collection." : "No favorites match this search or folder.";
+            EmptyGames.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             GamesList.ItemsSource = rows;
         }
 
         private void Filter_Changed(object sender, EventArgs e) => RefreshGames();
+
+        // Fetch only realized cards; a large collection should not issue thousands
+        // of requests at once. Recycled list items can change their DataContext.
+        private void FavoriteCard_Loaded(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is FavoriteRow row) LoadPreview(row);
+        }
+
+        private void FavoriteCard_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (sender is FrameworkElement { IsLoaded: true } && e.NewValue is FavoriteRow row) LoadPreview(row);
+        }
+
+        private async void LoadPreview(FavoriteRow row)
+        {
+            if (row.PreviewRequested || _lifetime.IsCancellationRequested) return;
+            row.PreviewRequested = true;
+            try { row.ApplyPreview(await GamePreviews.GetAsync(row.Game.PlaceId, _lifetime.Token)); }
+            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+            catch { row.ApplyPreview(null); } // An unavailable preview must never block Play.
+        }
 
         private void AddGame_Click(object sender, RoutedEventArgs e)
         {
@@ -157,10 +212,18 @@ namespace Bloxstrap.UI.Elements.Dialogs
             {
                 var paths = FavoriteShortcut.GetPaths(row.Game, dialog.Desktop, dialog.StartMenu);
                 bool replace = paths.Any(File.Exists);
-                if (replace && Frontend.ShowMessageBox("A shortcut already exists at one of these locations. Replace it?",
-                        MessageBoxImage.Question, MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+                if (replace && Frontend.ShowMessageBox("A shortcut for this favorite already exists. Update it to use this copy of BuffStrap?\n\n" +
+                        String.Join("\n", paths.Where(File.Exists)), MessageBoxImage.Question, MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
                 FavoriteShortcut.Create(row.Game, paths, replace);
-                Frontend.ShowMessageBox("Shortcut created:\n\n" + String.Join("\n", paths), MessageBoxImage.Information);
+                var oldLinks = FavoriteShortcut.FindLegacyPaths(row.Game, paths);
+                if (oldLinks.Count > 0 && Frontend.ShowMessageBox(
+                        "Older GUID-named shortcuts for this favorite were found. Remove those old shortcuts now?\n\n" +
+                        "If an old shortcut was pinned to Start or the taskbar, unpin it and pin the new one instead.\n\n" +
+                        String.Join("\n", oldLinks), MessageBoxImage.Question, MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                    FavoriteShortcut.RemoveLegacyPaths(row.Game, oldLinks);
+                Frontend.ShowMessageBox("Shortcut created:\n\n" + String.Join("\n", paths) +
+                    "\n\nIt opens this BuffStrap executable:\n" + Paths.Process +
+                    "\n\nKeep this executable in place. If you move or remove it, recreate the shortcut.", MessageBoxImage.Information);
             }
             catch (Exception ex) { ShowError("Could not create all shortcuts", ex); }
         }
