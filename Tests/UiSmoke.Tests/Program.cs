@@ -1,9 +1,11 @@
 using System.Reflection;
 using System.Runtime.Versioning;
 using System.IO;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -58,9 +60,39 @@ internal static class Program
             var second = new FavoriteGame { Name = "Beta game", PlaceId = 456, Folder = "Other" };
             store.Update(data => { data.Accounts.Add(account); data.Games.Add(first); data.Games.Add(second); });
 
+            // A test build must not launch a different, older installed executable.
+            var favoritesLauncher = typeof(App).Assembly.GetType("Bloxstrap.FavoritesLauncher", throwOnError: true)!;
+            var prepareFavorite = favoritesLauncher.GetMethod("PrepareFavoriteLaunch", BindingFlags.Static | BindingFlags.NonPublic)!;
+            ProcessStartInfo GetStartInfo(string name, params object[] args) => (ProcessStartInfo)favoritesLauncher
+                .GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, args)!;
+            var favoriteStart = GetStartInfo("FavoriteStartInfo", first.Id);
+            var accountStart = GetStartInfo("AccountStartInfo", account.Id, 123L);
+            var placeStart = GetStartInfo("PlaceStartInfo", 456L);
+            foreach (var start in new[] { favoriteStart, accountStart, placeStart })
+            {
+                Assert(start.FileName == Environment.ProcessPath && start.FileName != Path.Combine(root, "BuffStrap.exe") && !start.UseShellExecute,
+                    "A menu action would start the installed build instead of the running build.");
+                Assert(start.ArgumentList.Last() == "-childlaunch", "The child process would repeat the launcher update check.");
+            }
+            var favoriteChild = new LaunchSettings(favoriteStart.ArgumentList.ToArray());
+            var accountChild = new LaunchSettings(accountStart.ArgumentList.ToArray());
+            var placeChild = new LaunchSettings(placeStart.ArgumentList.ToArray());
+            Assert(favoriteChild.FavoriteFlag.Data == first.Id.ToString("D") && favoriteChild.ChildLaunchFlag.Active && favoriteChild.BypassUpdateCheck,
+                "The favorite was not passed safely to the same build.");
+            Assert(accountChild.AccountFlag.Data == account.Id.ToString("D") && accountChild.AccountPlaceFlag.Data == "123" && accountChild.ChildLaunchFlag.Active,
+                "The account and game were not passed safely to the same build.");
+            Assert(placeChild.RobloxLaunchMode == LaunchMode.Player && placeChild.RobloxLaunchArgs == "roblox://experiences/start?placeId=456" && placeChild.ChildLaunchFlag.Active,
+                "An unassigned game did not target the Roblox Player.");
+
             // Loading the real BAML catches errors in names, controls, resources and event wiring.
             Mark("Loading WPF windows");
             var menu = new LaunchMenuDialog();
+            VerifyLaunchMenu(menu, "dark");
+            App.Settings.Prop.Theme = Theme.Light;
+            var lightMenu = new LaunchMenuDialog();
+            VerifyLaunchMenu(lightMenu, "light");
+            App.Settings.Prop.Theme = Theme.Dark;
+            menu.ApplyTheme();
             var favorites = new FavoritesWindow();
             var accounts = new AccountsWindow();
             var login = new RobloxLoginWindow();
@@ -124,6 +156,14 @@ internal static class Program
             saveSession.Invoke(vault, new object[] { account.Id, secret });
             var sessionsType = typeof(App).Assembly.GetType("Bloxstrap.AccountSessions", throwOnError: true)!;
             var requireSaved = sessionsType.GetMethod("RequireSaved", BindingFlags.Static | BindingFlags.Public)!;
+            try
+            {
+                prepareFavorite.Invoke(null, new object[] { first.Id });
+                throw new InvalidOperationException("An account without a connected session was allowed to play.");
+            }
+            catch (TargetInvocationException ex) when (ex.InnerException is RobloxAccountException) { }
+            Assert(launchSettings.SelectedAccountId is null && launchSettings.RobloxLaunchArgs == "",
+                "A disconnected favorite silently fell back to another account or a browser.");
             try
             {
                 requireSaved.Invoke(null, new object[] { account.Id });
@@ -220,6 +260,54 @@ internal static class Program
                 catch (RobloxAccountException) { }
                 Assert(wrongSteps == 1, "A ticket was requested for the wrong account.");
             }
+
+            prepareFavorite.Invoke(null, new object[] { first.Id });
+            Assert(launchSettings.SelectedAccountId == account.Id && launchSettings.SelectedAccountPlaceId == 123 && launchSettings.RobloxLaunchArgs == "",
+                "The first favorite did not choose its assigned account and game.");
+            var otherAccount = new FavoriteAccount { Username = "Other_User", UserId = 99, DisplayName = "Other" };
+            var otherFavorite = new FavoriteGame { Name = "Other game", PlaceId = 789, AccountId = otherAccount.Id };
+            store.Update(data => { data.Accounts.Add(otherAccount); data.Games.Add(otherFavorite); });
+            const string otherSession = "synthetic-other-account-session";
+            saveSession.Invoke(vault, new object[] { otherAccount.Id, otherSession });
+            prepareFavorite.Invoke(null, new object[] { otherFavorite.Id });
+            Assert(launchSettings.SelectedAccountId == otherAccount.Id && launchSettings.SelectedAccountPlaceId == 789 && launchSettings.RobloxLaunchArgs == "",
+                "The assigned favorite did not choose its own account and game.");
+            int otherSteps = 0;
+            using (var otherHttp = new HttpClient(new CallbackHandler(request =>
+            {
+                otherSteps++;
+                Assert(request.Headers.GetValues("Cookie").Single() == ".ROBLOSECURITY=" + otherSession,
+                    "A different account's session was used for the favorite.");
+                if (otherSteps == 1) return JsonReply(HttpStatusCode.OK, "{\"id\":99,\"name\":\"Other_User\",\"displayName\":\"Other\"}");
+                if (otherSteps == 2) return JsonReply(HttpStatusCode.OK, "{\"clientAssertion\":\"other-assertion\"}");
+                if (otherSteps == 3)
+                {
+                    var challenge = JsonReply(HttpStatusCode.Forbidden, "{}");
+                    challenge.Headers.TryAddWithoutValidation("x-csrf-token", "other-csrf");
+                    return challenge;
+                }
+                if (otherSteps == 4)
+                {
+                    var response = JsonReply(HttpStatusCode.OK, "{}");
+                    response.Headers.TryAddWithoutValidation("rbx-authentication-ticket", "other-ticket");
+                    return response;
+                }
+                throw new InvalidOperationException("Unexpected selected-account request.");
+            })))
+            {
+                var mint = sessionsType.GetMethod("CreateLaunchTicketAsync", BindingFlags.Static | BindingFlags.Public)!;
+                string ticket = Pump((Task<string>)mint.Invoke(null, new object?[] { otherAccount.Id, CancellationToken.None, new RobloxAccountClient(otherHttp) })!);
+                string directUri = RobloxAccountClient.BuildPlayerUri(ticket, launchSettings.SelectedAccountPlaceId!.Value, 1234567890, DateTimeOffset.UtcNow, Guid.NewGuid());
+                var selectedJoin = new GameJoin().GetJoinDataByLaunchCommand(directUri);
+                Assert(otherSteps == 4 && selectedJoin.JoinType == GameJoinType.RequestGame && selectedJoin.PlaceId == 789 &&
+                    directUri.StartsWith("roblox-player:1+launchmode:play+gameinfo:other-ticket+", StringComparison.Ordinal) && !directUri.Contains(otherSession),
+                    "The chosen account and game did not produce a direct Roblox Player launch.");
+            }
+            prepareFavorite.Invoke(null, new object[] { second.Id });
+            Assert(launchSettings.SelectedAccountId is null && launchSettings.SelectedAccountPlaceId is null &&
+                launchSettings.RobloxLaunchArgs == "roblox://experiences/start?placeId=456",
+                "An unassigned favorite retained a previous account or failed to target the Player.");
+
             var redact = typeof(Logger).GetMethod("RedactSecrets", BindingFlags.Static | BindingFlags.NonPublic)!;
             string redacted = (string)redact.Invoke(null, new object[] { "roblox-player:1+gameinfo:ticket-secret+foo .ROBLOSECURITY=cookie-secret; x-csrf-token: csrf-secret" })!;
             Assert(!redacted.Contains("ticket-secret") && !redacted.Contains("cookie-secret") && !redacted.Contains("csrf-secret"),
@@ -600,6 +688,49 @@ internal static class Program
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(_send(request));
         }
+    }
+
+    private static void VerifyLaunchMenu(LaunchMenuDialog menu, string theme)
+    {
+        var visual = (UIElement)menu.Content;
+        visual.Measure(new Size(580, Double.PositiveInfinity));
+        double height = Math.Ceiling(visual.DesiredSize.Height);
+        Assert(height > 0 && height < 500, "The launch menu did not fit its compact layout.");
+        visual.Arrange(new Rect(0, 0, 580, height));
+        visual.UpdateLayout();
+
+        var launch = (Wpf.Ui.Controls.CardAction)menu.FindName("LaunchRobloxAction");
+        var settings = (Wpf.Ui.Controls.CardAction)menu.FindName("LaunchSettingsAction");
+        var accounts = (Wpf.Ui.Controls.Button)menu.FindName("AccountsButton");
+        var favorites = (Wpf.Ui.Controls.Button)menu.FindName("FavoritesButton");
+        Assert(launch.Command is not null && settings.Command is not null && accounts.Command is not null && favorites.Command is not null,
+            "A launch menu action was not bound.");
+        Assert(accounts.Content is null && favorites.Content is null &&
+            accounts.Icon == Wpf.Ui.Common.SymbolRegular.Person24 && favorites.Icon == Wpf.Ui.Common.SymbolRegular.Star24,
+            "The account and favorites controls must be icon-only buttons.");
+        Assert((string)accounts.ToolTip == "Accounts" && (string)favorites.ToolTip == "Favorites" &&
+            AutomationProperties.GetName(accounts) == "Accounts" && AutomationProperties.GetName(favorites) == "Favorites",
+            "The icon buttons need tooltips and accessible names.");
+        Assert(launch.TabIndex == 0 && settings.TabIndex == 1 && accounts.TabIndex == 2 && favorites.TabIndex == 3,
+            "The launch menu keyboard order changed.");
+
+        // Optionally retain the actual WPF render for visual review in Windows CI.
+        string? snapshotDirectory = Environment.GetEnvironmentVariable("BUFFSTRAP_MENU_SNAPSHOT_DIR");
+        if (String.IsNullOrEmpty(snapshotDirectory)) return;
+        Directory.CreateDirectory(snapshotDirectory);
+        var drawing = new DrawingVisual();
+        using (var context = drawing.RenderOpen())
+        {
+            var bounds = new Rect(0, 0, 580, height);
+            context.DrawRectangle(menu.Background ?? Brushes.Black, null, bounds);
+            context.DrawRectangle(new VisualBrush(visual), null, bounds);
+        }
+        var bitmap = new RenderTargetBitmap(580, (int)height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(drawing);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var output = File.Create(Path.Combine(snapshotDirectory, "launch-menu-" + theme + ".png"));
+        encoder.Save(output);
     }
 
     private static void Mark(string stage)
