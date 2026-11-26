@@ -33,24 +33,6 @@ jobs:
           BUFFSTRAP_MENU_SNAPSHOT_DIR: ${{ runner.temp }}\buffstrap-menu
         run: dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Debug --no-build
 
-      - name: Inspect dark menu preview
-        shell: pwsh
-        run: |
-          $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:RUNNER_TEMP\buffstrap-menu\launch-menu-dark.png"))
-          for ($i = 0; $i -lt $encoded.Length; $i += 3900) {
-            $part = $encoded.Substring($i, [Math]::Min(3900, $encoded.Length - $i))
-            Write-Host "::notice title=MENU_dark_$($i.ToString('D6'))::$part"
-          }
-
-      - name: Inspect light menu preview
-        shell: pwsh
-        run: |
-          $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:RUNNER_TEMP\buffstrap-menu\launch-menu-light.png"))
-          for ($i = 0; $i -lt $encoded.Length; $i += 3900) {
-            $part = $encoded.Substring($i, [Math]::Min(3900, $encoded.Length - $i))
-            Write-Host "::notice title=MENU_light_$($i.ToString('D6'))::$part"
-          }
-
       - name: Save menu previews
         if: always()
         uses: actions/upload-artifact@v7
