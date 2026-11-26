@@ -30,4 +30,13 @@ jobs:
         timeout-minutes: 3
         env:
           BUFFSTRAP_TEST_WEBVIEW2: '1'
+          BUFFSTRAP_MENU_SNAPSHOT_DIR: ${{ runner.temp }}\buffstrap-menu
         run: dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Debug --no-build
+
+      - name: Save menu previews
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: buffstrap-menu-preview
+          path: ${{ runner.temp }}\buffstrap-menu\*.png
+          if-no-files-found: ignore

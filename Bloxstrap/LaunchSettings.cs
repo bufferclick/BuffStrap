@@ -46,6 +46,10 @@ namespace Bloxstrap
 
         public LaunchFlag FavoriteFlag { get; } = new("favorite");
 
+        // A launch started by an already-running menu should keep that exact build
+        // and not repeat the install/update check in its child process.
+        public LaunchFlag ChildLaunchFlag { get; } = new("childlaunch");
+
         // These identify a locally saved account and a game, never a cookie or ticket.
         public LaunchFlag AccountFlag { get; } = new("account");
         public LaunchFlag AccountPlaceFlag { get; } = new("accountplace");
@@ -55,7 +59,7 @@ namespace Bloxstrap
 #if DEBUG
         public bool BypassUpdateCheck => true;
 #else
-        public bool BypassUpdateCheck => UninstallFlag.Active || WatcherFlag.Active || DiscordJoinFlag.Active;
+        public bool BypassUpdateCheck => UninstallFlag.Active || WatcherFlag.Active || DiscordJoinFlag.Active || ChildLaunchFlag.Active;
 #endif
 
         public LaunchMode RobloxLaunchMode { get; set; } = LaunchMode.None;

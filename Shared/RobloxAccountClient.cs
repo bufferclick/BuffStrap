@@ -66,6 +66,7 @@ public sealed class RobloxAccountClient
         var request = new HttpRequestMessage(method, url);
         request.Headers.TryAddWithoutValidation("Cookie", ".ROBLOSECURITY=" + session);
         request.Headers.Referrer = new Uri("https://www.roblox.com/");
+        request.Headers.TryAddWithoutValidation("Origin", "https://www.roblox.com");
         return request;
     }
 

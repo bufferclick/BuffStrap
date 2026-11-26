@@ -184,6 +184,8 @@ try
         {
             step++;
             Assert(request.RequestUri!.Scheme == "https");
+            Assert(request.Headers.Referrer?.AbsoluteUri == "https://www.roblox.com/" &&
+                request.Headers.GetValues("Origin").Single() == "https://www.roblox.com", "The Roblox web origin was not included.");
             string cookie = request.Headers.GetValues("Cookie").Single();
             HttpResponseMessage response;
             if (step == 1)

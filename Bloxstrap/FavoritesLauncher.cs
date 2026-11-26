@@ -12,25 +12,24 @@ namespace Bloxstrap
         {
             try
             {
-                FavoriteLaunchPlan plan = FavoriteLaunchPlan.Resolve(Store.Load(), id);
-                if (plan.AccountId is Guid accountId)
-                {
-                    // Never replace a missing, expired, or rejected account with the
-                    // current Roblox session. A fresh ticket is requested at launch.
-                    AccountSessions.RequireSaved(accountId);
-                    App.LaunchSettings.SelectedAccountId = accountId;
-                    App.LaunchSettings.SelectedAccountPlaceId = plan.PlaceId;
-                    App.LaunchSettings.RobloxLaunchArgs = "";
-                }
-                else
-                {
-                    App.LaunchSettings.RobloxLaunchArgs = plan.PlayerUrl;
-                }
+                PrepareFavoriteLaunch(id);
                 LaunchHandler.LaunchRoblox(LaunchMode.Player);
             }
-            catch (Exception ex)
+            catch (Exception ex) { ShowLaunchError(ex); }
+        }
+
+        internal static void PrepareFavoriteLaunch(Guid id)
+        {
+            FavoriteLaunchPlan plan = FavoriteLaunchPlan.Resolve(Store.Load(), id);
+            if (plan.AccountId is Guid accountId)
             {
-                ShowLaunchError(ex);
+                PrepareAccountLaunch(accountId, plan.PlaceId);
+            }
+            else
+            {
+                App.LaunchSettings.SelectedAccountId = null;
+                App.LaunchSettings.SelectedAccountPlaceId = null;
+                App.LaunchSettings.RobloxLaunchArgs = plan.PlayerUrl;
             }
         }
 
@@ -38,14 +37,21 @@ namespace Bloxstrap
         {
             try
             {
-                if (accountId == Guid.Empty || placeId <= 0) throw new RobloxAccountException("The account launch request is invalid.");
-                AccountSessions.RequireSaved(accountId);
-                App.LaunchSettings.SelectedAccountId = accountId;
-                App.LaunchSettings.SelectedAccountPlaceId = placeId;
-                App.LaunchSettings.RobloxLaunchArgs = "";
+                PrepareAccountLaunch(accountId, placeId);
                 LaunchHandler.LaunchRoblox(LaunchMode.Player);
             }
             catch (Exception ex) { ShowLaunchError(ex); }
+        }
+
+        private static void PrepareAccountLaunch(Guid accountId, long placeId)
+        {
+            if (accountId == Guid.Empty || placeId <= 0) throw new RobloxAccountException("The account launch request is invalid.");
+            // Never replace a missing, expired, or rejected account with the
+            // current Roblox session. A fresh ticket is requested at launch.
+            AccountSessions.RequireSaved(accountId);
+            App.LaunchSettings.SelectedAccountId = accountId;
+            App.LaunchSettings.SelectedAccountPlaceId = placeId;
+            App.LaunchSettings.RobloxLaunchArgs = "";
         }
 
         private static void ShowLaunchError(Exception ex)
@@ -56,31 +62,45 @@ namespace Bloxstrap
             App.Terminate();
         }
 
-        public static void StartFavorite(Guid id)
+        // A test build can be running beside an older installed build. Start the
+        // running executable, not Paths.Application, so Play uses this same code.
+        // Only public IDs travel on the child command line; the session and the
+        // one-time ticket are obtained inside the child.
+        private static ProcessStartInfo CreateChildStartInfo(params string[] arguments)
         {
-            var start = new ProcessStartInfo { FileName = Paths.Application, UseShellExecute = false };
-            start.ArgumentList.Add("-favorite");
-            start.ArgumentList.Add(id.ToString("D"));
-            if (Process.Start(start) is null) throw new InvalidOperationException("Windows could not start BuffStrap.");
+            var start = new ProcessStartInfo { FileName = Paths.Process, UseShellExecute = false };
+            foreach (string argument in arguments) start.ArgumentList.Add(argument);
+            start.ArgumentList.Add("-childlaunch");
+            return start;
         }
 
-        public static void StartAccountLaunch(Guid accountId, long placeId)
+        internal static ProcessStartInfo FavoriteStartInfo(Guid id)
+        {
+            if (id == Guid.Empty) throw new ArgumentException("Invalid favorite ID.", nameof(id));
+            return CreateChildStartInfo("-favorite", id.ToString("D"));
+        }
+
+        internal static ProcessStartInfo AccountStartInfo(Guid accountId, long placeId)
         {
             if (accountId == Guid.Empty || placeId <= 0) throw new ArgumentException("Invalid account or place ID.");
-            var start = new ProcessStartInfo { FileName = Paths.Application, UseShellExecute = false };
-            start.ArgumentList.Add("-account");
-            start.ArgumentList.Add(accountId.ToString("D"));
-            start.ArgumentList.Add("-accountplace");
-            start.ArgumentList.Add(placeId.ToString(CultureInfo.InvariantCulture));
-            if (Process.Start(start) is null) throw new InvalidOperationException("Windows could not start BuffStrap.");
+            return CreateChildStartInfo("-account", accountId.ToString("D"), "-accountplace", placeId.ToString(CultureInfo.InvariantCulture));
         }
 
-        public static void StartPlace(long placeId)
+        internal static ProcessStartInfo PlaceStartInfo(long placeId)
         {
             if (placeId <= 0) throw new ArgumentOutOfRangeException(nameof(placeId));
-            var start = new ProcessStartInfo { FileName = Paths.Application, UseShellExecute = false };
-            start.ArgumentList.Add($"roblox://experiences/start?placeId={placeId}");
-            if (Process.Start(start) is null) throw new InvalidOperationException("Windows could not start BuffStrap.");
+            return CreateChildStartInfo($"roblox://experiences/start?placeId={placeId.ToString(CultureInfo.InvariantCulture)}");
         }
+
+        private static void Start(ProcessStartInfo info)
+        {
+            using var process = Process.Start(info) ?? throw new InvalidOperationException("Windows could not start BuffStrap.");
+        }
+
+        public static void StartFavorite(Guid id) => Start(FavoriteStartInfo(id));
+
+        public static void StartAccountLaunch(Guid accountId, long placeId) => Start(AccountStartInfo(accountId, placeId));
+
+        public static void StartPlace(long placeId) => Start(PlaceStartInfo(placeId));
     }
 }
