@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BuffStrap is an open-source Roblox bootstrapper for Windows, with more ways to make your experience your own.">
+  <meta name="theme-color" content="#111114">
+  <meta property="og:title" content="BuffStrap — make it yours">
+  <meta property="og:description" content="A little more from your Roblox bootstrapper. Made for Windows and built in the open.">
+  <meta property="og:type" content="website">
+  <title>BuffStrap — make it yours</title>
+  <link rel="icon" type="image/png" href="site/assets/buffstrap-logo.png">
+  <link rel="preload" href="site/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="site/theme.js"></script>
+  <link rel="stylesheet" href="site/styles.css">
+  <script src="site/main.js" defer></script>
+</head>
+<body id="top">
+  <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v11m-4-4 4 4 4-4M5 16v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.9 13.2A8.5 8.5 0 0 1 10.8 3.1 8.5 8.5 0 1 0 20.9 13.2Z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 .9a11.1 11.1 0 0 0-3.51 21.64c.55.1.75-.24.75-.53v-2.08c-3.08.67-3.73-1.3-3.73-1.3-.5-1.29-1.23-1.63-1.23-1.63-1-.68.08-.67.08-.67 1.11.08 1.69 1.14 1.69 1.14.98 1.68 2.57 1.2 3.2.91.1-.71.38-1.2.7-1.48-2.46-.28-5.04-1.23-5.04-5.49 0-1.21.43-2.2 1.14-2.98-.12-.28-.5-1.41.1-2.94 0 0 .93-.3 3.05 1.14a10.6 10.6 0 0 1 5.56 0c2.12-1.44 3.05-1.14 3.05-1.14.6 1.53.22 2.66.1 2.94.71.78 1.14 1.77 1.14 2.98 0 4.27-2.59 5.2-5.06 5.48.4.35.75 1.02.75 2.06v3.06c0 .29.2.64.76.53A11.1 11.1 0 0 0 12 .9Z"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M2 5.3 10.9 4v7H2V5.3Zm10.1-1.5L22 2.4V11h-9.9V3.8ZM2 12h8.9v7L2 17.7V12Zm10.1 0H22v8.6l-9.9-1.4V12Z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.5c-2.1-1.5-5.1-2-8-1.1v12.2c2.9-.9 5.9-.4 8 1.1m0-12.2c2.1-1.5 5.1-2 8-1.1v12.2c-2.9-.9-5.9-.4-8 1.1m0-12.2v12.2"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 11.5a8 8 0 0 1-8 8 8.4 8.4 0 0 1-3.6-.8L4 20l1.3-4.4a8.4 8.4 0 0 1-.8-3.6 8 8 0 1 1 15.5-.5Z"/><path d="M8 12h8"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 8.3c0 4.3-8.8 10.5-8.8 10.5S3.2 12.6 3.2 8.3a4.6 4.6 0 0 1 8-3.1l.8.9.8-.9a4.6 4.6 0 0 1 8 3.1Z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m12 2 1.8 5.8L20 10l-6.2 2.2L12 18l-1.8-5.8L4 10l6.2-2.2L12 2ZM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 5.7 0l3-3A4 4 0 0 0 13 4.3l-1.7 1.8M14 11a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 19.7l1.7-1.8"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand-group">
+        <a class="header-brand" href="#top" aria-label="BuffStrap home">
+          <img class="wordmark wordmark-dark" src="site/assets/buffstrap-wordmark-dark.png" alt="" width="1200" height="264">
+          <img class="wordmark wordmark-light" src="site/assets/buffstrap-wordmark-light.png" alt="" width="1200" height="264">
+        </a>
+        <span class="version-pill" data-release-tag>Latest release</span>
+      </div>
+      <nav class="desktop-nav" aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/bufferclick/BuffStrap" target="_blank" rel="noopener noreferrer">GitHub <svg class="icon small"><use href="#i-arrow-up-right"></use></svg></a>
+      </nav>
+      <div class="header-actions">
+        <a class="header-download" href="https://github.com/bufferclick/BuffStrap/releases/latest/download/BuffStrapSetup.exe">Download <svg class="icon"><use href="#i-download"></use></svg></a>
+        <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme" data-theme-toggle>
+          <svg class="icon sun-icon"><use href="#i-sun"></use></svg>
+          <svg class="icon moon-icon"><use href="#i-moon"></use></svg>
+        </button>
+        <details class="mobile-menu">
+          <summary aria-label="Open navigation"><svg class="icon"><use href="#i-menu"></use></svg></summary>
+          <nav aria-label="Mobile navigation">
+            <a href="#features">Features <svg class="icon small"><use href="#i-arrow-right"></use></svg></a>
+            <a href="#faq">FAQ <svg class="icon small"><use href="#i-arrow-right"></use></svg></a>
+            <a href="https://github.com/bufferclick/BuffStrap" target="_blank" rel="noopener noreferrer">GitHub <svg class="icon small"><use href="#i-external"></use></svg></a>
+            <a href="https://github.com/bufferclick/BuffStrap/releases/latest">All releases <svg class="icon small"><use href="#i-external"></use></svg></a>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero section-wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-dot"></span> A LITTLE MORE FROM YOUR LAUNCHER</div>
+        <h1 id="hero-title" class="hero-wordmark">
+          <span class="sr-only">BuffStrap</span>
+          <img class="wordmark wordmark-dark" src="site/assets/buffstrap-wordmark-dark.png" alt="" width="1200" height="264">
+          <img class="wordmark wordmark-light" src="site/assets/buffstrap-wordmark-light.png" alt="" width="1200" height="264">
+        </h1>
+        <p class="hero-description">BuffStrap is an alternative to the standard Roblox bootstrapper, with more features to make your experience your own.</p>
+        <p class="requirements"><svg class="icon"><use href="#i-windows"></use></svg> For 64-bit Windows 10 and above</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://github.com/bufferclick/BuffStrap/releases/latest/download/BuffStrapSetup.exe">
+            <span>Download for Windows</span><span class="button-divider"></span><svg class="icon"><use href="#i-download"></use></svg>
+          </a>
+        </div>
+        <p class="install-label">Or download the installer with PowerShell</p>
+        <div class="command-box">
+          <span class="command-prompt" aria-hidden="true">&gt;_</span>
+          <code id="install-command">iwr https://github.com/bufferclick/BuffStrap/releases/latest/download/BuffStrapSetup.exe -OutFile BuffStrapSetup.exe</code>
+          <button class="copy-button" type="button" data-copy-command aria-label="Copy PowerShell download command">
+            <svg class="icon copy-icon"><use href="#i-copy"></use></svg><span data-copy-label>Copy</span>
+          </button>
+        </div>
+        <span class="copy-status sr-only" role="status" aria-live="polite" data-copy-status></span>
+        <p class="command-hint">Then run <code>BuffStrapSetup.exe</code> to get started.</p>
+        <div class="hero-meta">
+          <a class="github-link" href="https://github.com/bufferclick/BuffStrap" target="_blank" rel="noopener noreferrer"><svg class="icon"><use href="#i-github"></use></svg> View on GitHub <svg class="icon small"><use href="#i-arrow-up-right"></use></svg></a>
+          <a class="download-metric" href="https://github.com/bufferclick/BuffStrap/releases" target="_blank" rel="noopener noreferrer" aria-label="View BuffStrap release downloads on GitHub">
+            <svg class="icon"><use href="#i-download"></use></svg><strong data-download-count>View releases</strong><span data-download-label></span>
+          </a>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <figure class="hero-showcase">
+          <div class="showcase-stage" aria-hidden="true">
+            <div class="mock-window showcase-settings">
+              <div class="mock-titlebar"><span><img src="site/assets/buffstrap-logo.png" alt=""> BuffStrap Settings</span><span class="mock-controls">— &nbsp; □ &nbsp; ×</span></div>
+              <div class="mock-settings-body">
+                <div class="mock-sidebar">
+                  <div class="mock-search">⌕ &nbsp; Search</div>
+                  <div class="mock-side-item selected"><span>◉</span> Integrations</div>
+                  <div class="mock-side-item"><span>▷</span> Bootstrapper</div>
+                  <div class="mock-side-item"><span>☁</span> Deployment</div>
+                  <div class="mock-side-item"><span>⚙</span> Update Center</div>
+                  <div class="mock-side-item"><span>◈</span> Mods</div>
+                  <div class="mock-side-item"><span>⚑</span> Fast Flags</div>
+                  <div class="mock-side-item"><span>◐</span> Appearance</div>
+                </div>
+                <div class="mock-settings-main">
+                  <div class="mock-breadcrumb">Settings &nbsp; › &nbsp; Integrations</div>
+                  <div class="mock-heading">Integrations</div>
+                  <div class="mock-subheading">Customize your experience</div>
+                  <div class="mock-section-name">Activity tracking</div>
+                  <div class="mock-option"><span><b>Enable activity tracking</b><small>See information about your current game.</small></span><i class="mock-toggle on"></i></div>
+                  <div class="mock-option"><span><b>Show server details</b><small>View information about your server.</small></span><i class="mock-toggle on"></i></div>
+                  <div class="mock-section-name">Discord Rich Presence</div>
+                  <div class="mock-option"><span><b>Show game activity</b><small>Let friends see what you're playing.</small></span><i class="mock-toggle on"></i></div>
+                </div>
+              </div>
+            </div>
+            <div class="mock-window showcase-loader">
+              <div class="mock-titlebar"><span>BuffStrap</span><span class="mock-controls">— &nbsp; ×</span></div>
+              <img class="loader-logo" src="site/assets/buffstrap-logo.png" alt="">
+              <div class="loader-text">Getting things ready...</div>
+              <div class="loader-track"><span></span></div>
+            </div>
+            <div class="mock-window showcase-launch">
+              <div class="mock-titlebar"><span><img src="site/assets/buffstrap-logo.png" alt=""> BuffStrap</span><span class="mock-controls">— &nbsp; ×</span></div>
+              <div class="launch-layout">
+                <div class="launch-brand">
+                  <img src="site/assets/buffstrap-wordmark-dark.png" alt="">
+                  <small>Made by Buffer</small>
+                  <div class="launch-brand-links">ⓘ &nbsp; About &nbsp;&nbsp; · &nbsp;&nbsp; GitHub ↗</div>
+                </div>
+                <div class="launch-actions">
+                  <div class="launch-action"><span>▷</span> Launch Roblox <b>›</b></div>
+                  <div class="launch-action"><span>⚙</span> Configure settings <b>›</b></div>
+                  <div class="launch-action"><span>♡</span> Favorites <b>›</b></div>
+                  <div class="launch-action"><span>◈</span> Launch Roblox Studio <b>›</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption>Illustrated preview &middot; appearance may vary</figcaption>
+        </figure>
+        <div class="resource-grid" role="group" aria-label="Explore BuffStrap resources">
+          <a class="resource-card" href="https://github.com/bufferclick/BuffStrap#readme" target="_blank" rel="noopener noreferrer">
+            <span class="resource-icon"><svg class="icon"><use href="#i-book"></use></svg></span><span><strong>Project guide</strong><small>Get to know BuffStrap.</small></span><svg class="icon resource-arrow"><use href="#i-arrow-up-right"></use></svg>
+          </a>
+          <a class="resource-card" href="https://discord.gg/xSsamjAU84" target="_blank" rel="noopener noreferrer">
+            <span class="resource-icon"><svg class="icon"><use href="#i-chat"></use></svg></span><span><strong>Fishstrap community</strong><small>Visit the upstream Discord.</small></span><svg class="icon resource-arrow"><use href="#i-arrow-up-right"></use></svg>
+          </a>
+          <a class="resource-card" href="https://github.com/bufferclick/BuffStrap" target="_blank" rel="noopener noreferrer">
+            <span class="resource-icon"><svg class="icon"><use href="#i-github"></use></svg></span><span><strong>GitHub repo</strong><small>Explore the source code.</small></span><svg class="icon resource-arrow"><use href="#i-arrow-up-right"></use></svg>
+          </a>
+          <a class="resource-card" href="https://fishstrap.app/mods" target="_blank" rel="noopener noreferrer">
+            <span class="resource-icon"><svg class="icon"><use href="#i-sliders"></use></svg></span><span><strong>Fishstrap mods</strong><small>Browse the upstream directory.</small></span><svg class="icon resource-arrow"><use href="#i-arrow-up-right"></use></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="features section-wrap" aria-labelledby="features-title">
+      <div class="section-heading">
+        <span class="section-kicker">MADE TO FEEL LIKE YOURS</span>
+        <h2 id="features-title">Features</h2>
+        <p>A few of the things BuffStrap adds on top of the regular Roblox bootstrapper.</p>
+      </div>
+
+      <article class="feature-row">
+        <div class="feature-copy">
+          <span class="feature-number">01 <span></span> THE INTERFACE</span>
+          <h3>Clean User Interface</h3>
+          <p>Powered by WPF UI, BuffStrap brings your settings together in a clean, modern interface. Less digging around, more getting to the fun.</p>
+        </div>
+        <div class="feature-visual ui-visual" aria-hidden="true">
+          <div class="visual-glow"></div>
+          <div class="mock-window feature-settings-window">
+            <div class="mock-titlebar"><span><img src="site/assets/buffstrap-logo.png" alt=""> BuffStrap Settings</span><span class="mock-controls">— &nbsp; □ &nbsp; ×</span></div>
+            <div class="mock-settings-body">
+              <div class="mock-sidebar">
+                <div class="mock-search">⌕ &nbsp; Search</div>
+                <div class="mock-side-item selected"><span>◉</span> Integrations</div>
+                <div class="mock-side-item"><span>▷</span> Bootstrapper</div>
+                <div class="mock-side-item"><span>☁</span> Deployment</div>
+                <div class="mock-side-item"><span>⚙</span> Update Center</div>
+                <div class="mock-side-item"><span>◈</span> Mods</div>
+                <div class="mock-side-item"><span>⚑</span> Fast Flags</div>
+                <div class="mock-side-item"><span>◐</span> Appearance</div>
+              </div>
+              <div class="mock-settings-main">
+                <div class="mock-breadcrumb">Settings &nbsp; › &nbsp; Integrations</div>
+                <div class="mock-heading">Integrations</div>
+                <div class="mock-subheading">Customize your experience</div>
+                <div class="mock-section-name">Activity tracking</div>
+                <div class="mock-option"><span><b>Enable activity tracking</b><small>See information about your current game.</small></span><i class="mock-toggle on"></i></div>
+                <div class="mock-option"><span><b>Show server details</b><small>View information about your server.</small></span><i class="mock-toggle on"></i></div>
+                <div class="mock-section-name">Discord Rich Presence</div>
+                <div class="mock-option"><span><b>Show game activity</b><small>Let friends see what you're playing.</small></span><i class="mock-toggle on"></i></div>
+              </div>
+            </div>
+          </div>
+          <span class="visual-caption">ILLUSTRATED PREVIEW</span>
+        </div>
+      </article>
+
+      <article class="feature-row feature-row-reverse" id="customizations">
+        <div class="feature-copy">
+          <span class="feature-number">02 <span></span> MAKE IT YOURS</span>
+          <h3>Custom Modifications</h3>
+          <p>Make your launcher feel like yours with appearance options and custom bootstrapper themes. You can also use supported mods for local files such as cursors, sounds, and fonts.</p>
+          <p class="feature-note">Roblox's own settings and FastFlag allowlist still apply.</p>
+        </div>
+        <div class="feature-visual customize-visual" aria-hidden="true">
+          <div class="visual-glow"></div>
+          <div class="appearance-window mock-window">
+            <div class="mock-titlebar"><span><img src="site/assets/buffstrap-logo.png" alt=""> Appearance</span><span class="mock-controls">— &nbsp; □ &nbsp; ×</span></div>
+            <div class="appearance-content">
+              <div class="appearance-title">Make it yours <span>✦</span></div>
+              <div class="appearance-subtitle">Choose a look for your launcher.</div>
+              <div class="theme-choices">
+                <div class="theme-tile theme-tile-light"><div><span></span><span></span><span></span></div><b>Light</b><small>Clean and bright</small></div>
+                <div class="theme-tile theme-tile-dark"><div><span></span><span></span><span></span></div><b>Dark</b><small>Easy on the eyes</small><i>✓</i></div>
+              </div>
+              <div class="appearance-bottom"><span>Launcher theme</span><b>Custom &nbsp;⌄</b></div>
+            </div>
+          </div>
+          <div class="palette-bubble"><span></span><span></span><span></span><span></span></div>
+          <span class="visual-caption">ILLUSTRATED PREVIEW</span>
+        </div>
+      </article>
+
+      <article class="feature-row">
+        <div class="feature-copy">
+          <span class="feature-number">03 <span></span> STAY INFORMED</span>
+          <h3>Server Information</h3>
+          <p>Get a closer look at your server, including details like region and uptime, when activity tracking is enabled. Location information is provided by RoValra and depends on service availability.</p>
+        </div>
+        <div class="feature-visual server-visual" aria-hidden="true">
+          <div class="visual-glow"></div>
+          <div class="server-panel mock-window">
+            <div class="mock-titlebar"><span>Server information</span><span class="mock-controls">— &nbsp; ×</span></div>
+            <div class="map-art">
+              <svg viewBox="0 0 500 210" preserveAspectRatio="xMidYMid slice"><path d="M25 64 59 39l47-8 28 18 27-4 21 17-12 24-24 6-10 22-29 4-17-13-28 4-11-17-27-5Zm124 70 19 5 16 23-3 26-17 23-9-18-3-26-15-17Zm124-68 34-24 44 3 15 13 44-4 33 19 36 5 15 27-20 13-34-8-13 15-39-8-20-18-21 4-12 21-25-6-13-22-24-8Zm49 73 19 8 14 27-9 21-15-10-9-24Zm111 18 27 3 18 17-8 15-24-2-18-14Z" fill="currentColor" opacity=".23"/><path d="M0 53h500M0 105h500M0 157h500M100 0v210M200 0v210M300 0v210M400 0v210" fill="none" stroke="currentColor" opacity=".1"/></svg>
+              <div class="map-pin"><span></span></div>
+              <div class="map-label">SERVER LOCATION <strong>North America</strong></div>
+            </div>
+            <div class="server-stats"><div><span>●</span><small>Connection</small><b>Connected</b></div><div><span>◷</span><small>Server uptime</small><b>01:24:18</b></div></div>
+          </div>
+          <span class="visual-caption">ILLUSTRATED PREVIEW</span>
+        </div>
+      </article>
+
+      <article class="feature-row feature-row-reverse">
+        <div class="feature-copy">
+          <span class="feature-number">04 <span></span> BETTER TOGETHER</span>
+          <h3>Discord Rich Presence</h3>
+          <p>Let your friends see what you're playing with customizable Discord Rich Presence. It also supports BloxstrapRPC for experiences that use it.</p>
+        </div>
+        <div class="feature-visual discord-visual" aria-hidden="true">
+          <div class="visual-glow"></div>
+          <div class="discord-card">
+            <div class="discord-banner"></div>
+            <div class="discord-avatar"><img src="site/assets/buffstrap-logo.png" alt=""><i></i></div>
+            <div class="discord-profile"><b>BuffStrap player</b><small>Ready to play</small></div>
+            <div class="discord-divider"></div>
+            <div class="discord-activity-label">PLAYING A GAME</div>
+            <div class="discord-activity"><span class="discord-activity-icon"><span></span></span><div><b>Roblox</b><span>Exploring a game</span><span>Playing with friends</span></div></div>
+            <div class="discord-button">View activity</div>
+          </div>
+          <span class="visual-caption">ILLUSTRATED PREVIEW</span>
+        </div>
+      </article>
+
+      <article class="feature-row invite-row">
+        <div class="feature-copy">
+          <span class="feature-number">05 <span></span> BRING YOUR FRIENDS</span>
+          <h3>Game Invite Links</h3>
+          <p>Share a game link and bring your friends along, even if they don't use BuffStrap. Invite links use the upstream Fishstrap service.</p>
+        </div>
+        <div class="feature-visual invite-visual">
+          <div class="visual-glow"></div>
+          <a class="invite-card" href="https://www.roblox.com/games/1818" target="_blank" rel="noopener noreferrer" aria-label="See Crossroads on Roblox">
+            <div class="invite-art" aria-hidden="true"><svg class="icon"><use href="#i-link"></use></svg><span>AN EXAMPLE GAME INVITE</span></div>
+            <div class="invite-info"><span><strong>Crossroads</strong><small>by Roblox</small></span><svg class="icon"><use href="#i-arrow-up-right"></use></svg></div>
+          </a>
+          <a class="invite-url" href="https://www.fishstrap.app/v1/joingame?placeId=1818" target="_blank" rel="noopener noreferrer"><svg class="icon"><use href="#i-link"></use></svg><span>fishstrap.app/v1/joingame?placeId=1818</span><svg class="icon"><use href="#i-arrow-up-right"></use></svg></a>
+        </div>
+      </article>
+
+      <div class="extras" role="group" aria-label="More BuffStrap features">
+        <div class="extra-card"><span class="extra-icon"><svg class="icon"><use href="#i-heart"></use></svg></span><div><h3>Favorites, organized</h3><p>Save games, group them into folders, and create shortcuts for the ones you love.</p></div></div>
+        <div class="extra-card"><span class="extra-icon"><svg class="icon"><use href="#i-clock"></use></svg></span><div><h3>Updates, your way</h3><p>Check releases, back up your settings, and repair common installation issues.</p></div></div>
+        <div class="extra-card"><span class="extra-icon"><svg class="icon"><use href="#i-github"></use></svg></span><div><h3>Open source</h3><p>Built in the open on the work of Fishstrap and Bloxstrap contributors.</p></div></div>
+      </div>
+    </section>
+
+    <section class="faq-section" id="faq" aria-labelledby="faq-title">
+      <div class="section-wrap faq-wrap">
+        <div class="section-heading">
+          <span class="section-kicker">GOOD TO KNOW</span>
+          <h2 id="faq-title">Frequently Asked Questions</h2>
+          <p>Answers to a few of the most common questions about BuffStrap.</p>
+        </div>
+        <div class="faq-list">
+          <details open><summary>Where can I download BuffStrap?<span><svg class="icon"><use href="#i-chevron"></use></svg></span></summary><div class="faq-answer"><p>Download <strong>BuffStrapSetup.exe</strong> from the <a href="https://github.com/bufferclick/BuffStrap/releases/latest">official GitHub releases page</a>, or use the download button above. Setup will install the latest stable release.</p></div></details>
+          <details><summary>What are the system requirements?<span><svg class="icon"><use href="#i-chevron"></use></svg></span></summary><div class="faq-answer"><p>BuffStrap is made for 64-bit Windows 10 and newer. The release executables include the required .NET runtime; Roblox is downloaded or updated when you first launch it.</p></div></details>
+          <details><summary>Is BuffStrap malware?<span><svg class="icon"><use href="#i-chevron"></use></svg></span></summary><div class="faq-answer"><p>BuffStrap is open source, so you can <a href="https://github.com/bufferclick/BuffStrap" target="_blank" rel="noopener noreferrer">inspect the code on GitHub</a>. For your safety, download releases from the official repository and scan any executable you download.</p></div></details>
+          <details><summary>Could using BuffStrap get me banned?<span><svg class="icon"><use href="#i-chevron"></use></svg></span></summary><div class="faq-answer"><p>Roblox controls its own rules and enforcement, so no third-party tool can guarantee an account will never be affected. Use features responsibly and review <a href="https://devforum.roblox.com/t/an-update-on-automated-action-against-modified-clients/3640609" target="_blank" rel="noopener noreferrer">Roblox's guidance on modified clients</a>.</p></div></details>
+          <details><summary>Will BuffStrap increase my FPS or reduce my ping?<span><svg class="icon"><use href="#i-chevron"></use></svg></span></summary><div class="faq-answer"><p>BuffStrap does not promise an FPS boost or lower ping. Performance depends on your device, connection, the experience, and Roblox's current settings.</p></div></details>
+          <details><summary>Why don't some FastFlags work?<span><svg class="icon"><use href="#i-chevron"></use></svg></span></summary><div class="faq-answer"><p>Roblox controls which client settings are accepted. Its FastFlag allowlist still applies, so some flags may be ignored or change over time.</p></div></details>
+          <details><summary>Can I customize Roblox with mods or themes?<span><svg class="icon"><use href="#i-chevron"></use></svg></span></summary><div class="faq-answer"><p>BuffStrap includes launcher appearance options and supports some local file modifications. Custom bootstrapper themes affect the launch window; they do not universally theme Roblox or every experience. You can browse the <a href="https://fishstrap.app/mods" target="_blank" rel="noopener noreferrer">upstream Fishstrap mod directory</a>, but check compatibility and download sources carefully.</p></div></details>
+          <details><summary>Can BuffStrap switch accounts automatically?<span><svg class="icon"><use href="#i-chevron"></use></svg></span></summary><div class="faq-answer"><p>In the v1.0.1 release, account entries are username labels rather than saved logins. Assigned favorites open the official Roblox game page, where you sign in or switch accounts and press Play. Automatic selected-account launching is not part of that release.</p></div></details>
+          <details><summary>Where can I learn more?<span><svg class="icon"><use href="#i-chevron"></use></svg></span></summary><div class="faq-answer"><p>Start with the <a href="https://github.com/bufferclick/BuffStrap#readme" target="_blank" rel="noopener noreferrer">project guide on GitHub</a>. BuffStrap is based on Fishstrap and Bloxstrap; the <a href="https://discord.gg/xSsamjAU84" target="_blank" rel="noopener noreferrer">Fishstrap Discord</a> is an upstream community, not a dedicated BuffStrap support server.</p></div></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing section-wrap" aria-labelledby="closing-title">
+      <div class="closing-card">
+        <div class="closing-copy"><span class="section-kicker">READY WHEN YOU ARE</span><h2 id="closing-title">Make it yours.</h2><p>A little more choice, right where your game starts.</p></div>
+        <a class="button button-primary" href="https://github.com/bufferclick/BuffStrap/releases/latest/download/BuffStrapSetup.exe">Download for Windows <svg class="icon"><use href="#i-download"></use></svg></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="section-wrap footer-inner">
+      <div class="footer-brand"><a class="footer-wordmark" href="#top" aria-label="BuffStrap home"><img class="wordmark wordmark-dark" src="site/assets/buffstrap-wordmark-dark.png" alt="" width="1200" height="264"><img class="wordmark wordmark-light" src="site/assets/buffstrap-wordmark-light.png" alt="" width="1200" height="264"></a><p>Made by Buffer, built on the work of Fishstrap and Bloxstrap.</p></div>
+      <div class="footer-links"><a href="#features">Features</a><a href="#faq">FAQ</a><a href="https://github.com/bufferclick/BuffStrap/releases/latest">Releases</a><a href="https://github.com/bufferclick/BuffStrap" target="_blank" rel="noopener noreferrer">GitHub <svg class="icon small"><use href="#i-arrow-up-right"></use></svg></a></div>
+    </div>
+    <div class="section-wrap footer-bottom"><span>BuffStrap is not affiliated with Roblox Corporation.</span><a href="https://github.com/bufferclick/BuffStrap/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License <svg class="icon small"><use href="#i-arrow-up-right"></use></svg></a></div>
+  </footer>
+</body>
+</html>
