@@ -36,8 +36,10 @@ jobs:
       - name: Test releases, favorites and backups
         run: dotnet run --project .\Tests\ReleaseClient.Tests\ReleaseClient.Tests.csproj -c Release --no-build
 
-      - name: Smoke test WPF pages and shortcuts
+      - name: Smoke test WPF pages, accounts and isolated browser profiles
         timeout-minutes: 3
+        env:
+          BUFFSTRAP_TEST_WEBVIEW2: '1'
         run: dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Release --no-build
 
       - name: Publish BuffStrap

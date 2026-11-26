@@ -4,11 +4,6 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-    inputs:
-      test_webview2:
-        description: Test isolated WebView2 windows (requires a usable Windows desktop)
-        type: boolean
-        default: false
 
 jobs:
   build:
@@ -31,8 +26,8 @@ jobs:
       - name: Test releases, favorites and backups
         run: dotnet run --project .\Tests\ReleaseClient.Tests\ReleaseClient.Tests.csproj -c Debug --no-build
 
-      - name: Smoke test WPF pages and shortcuts
-        timeout-minutes: ${{ inputs.test_webview2 && 2 || 3 }}
+      - name: Smoke test WPF pages, accounts and isolated browser profiles
+        timeout-minutes: 3
         env:
-          BUFFSTRAP_TEST_WEBVIEW2: ${{ inputs.test_webview2 && '1' || '0' }}
+          BUFFSTRAP_TEST_WEBVIEW2: '1'
         run: dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Debug --no-build

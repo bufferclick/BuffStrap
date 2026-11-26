@@ -343,21 +343,9 @@ internal static class Program
                 VerifyAppBundleHasWebViewLoader(appBundle);
             string version = CoreWebView2Environment.GetAvailableBrowserVersionString();
             if (String.IsNullOrEmpty(version))
-            {
-                Console.WriteLine("SKIP WebView2 loader smoke: the runtime is not installed.");
-                Mark("SKIP single-file WebView2 loader: runtime not installed");
-            }
-            else
-            {
-                Console.WriteLine("PASS single-file test app WebView2 loader; runtime " + version);
-                Mark("PASS single-file test app WebView2 loader resolved runtime " + version);
-            }
-            return 0;
-        }
-        catch (WebView2RuntimeNotFoundException)
-        {
-            Console.WriteLine("SKIP WebView2 loader smoke: the runtime is not installed.");
-            Mark("SKIP single-file WebView2 loader: runtime not installed");
+                throw new InvalidOperationException("The WebView2 Runtime is required for the single-file loader test.");
+            Console.WriteLine("PASS single-file test app WebView2 loader; runtime " + version);
+            Mark("PASS single-file test app WebView2 loader resolved runtime " + version);
             return 0;
         }
         catch (Exception ex)
@@ -430,15 +418,11 @@ internal static class Program
         {
             string version = CoreWebView2Environment.GetAvailableBrowserVersionString();
             if (String.IsNullOrEmpty(version))
-            {
-                Console.WriteLine("SKIP WebView2 runtime test: runtime is not installed.");
-                return;
-            }
+                throw new InvalidOperationException("The WebView2 Runtime is required for the requested browser profile test.");
         }
         catch (WebView2RuntimeNotFoundException)
         {
-            Console.WriteLine("SKIP WebView2 runtime test: runtime is not installed.");
-            return;
+            throw new InvalidOperationException("The WebView2 Runtime is required for the requested browser profile test.");
         }
 
         // A native WebView2 or desktop message-pump stall must not leave this
@@ -529,6 +513,7 @@ internal static class Program
             await Task.Delay(200);
         Assert(!Directory.Exists(firstDir) && !Directory.Exists(secondDir), "Closed WebView2 profiles were not cleaned up.");
         Console.WriteLine("PASS isolated InPrivate WebView2 sign-in profiles and cleanup");
+        Mark("PASS isolated InPrivate WebView2 profiles and cleanup");
     }
 
     [SupportedOSPlatform("windows10.0.17763.0")]
