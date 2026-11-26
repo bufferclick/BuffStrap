@@ -47,6 +47,19 @@ jobs:
             }
           }
 
+      - name: Inspect favorites preview tail
+        if: always()
+        shell: pwsh
+        run: |
+          $file = "$env:RUNNER_TEMP\buffstrap-menu\favorites-dark.png"
+          if (Test-Path $file) {
+            $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file))
+            for ($i = 39000; $i -lt $encoded.Length; $i += 3900) {
+              $part = $encoded.Substring($i, [Math]::Min(3900, $encoded.Length - $i))
+              Write-Host "::notice title=PREVIEW_favorites_$($i.ToString('D6'))::$part"
+            }
+          }
+
       - name: Inspect accounts preview
         if: always()
         shell: pwsh
@@ -55,6 +68,19 @@ jobs:
           if (Test-Path $file) {
             $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file))
             for ($i = 0; $i -lt $encoded.Length; $i += 3900) {
+              $part = $encoded.Substring($i, [Math]::Min(3900, $encoded.Length - $i))
+              Write-Host "::notice title=PREVIEW_accounts_$($i.ToString('D6'))::$part"
+            }
+          }
+
+      - name: Inspect accounts preview tail
+        if: always()
+        shell: pwsh
+        run: |
+          $file = "$env:RUNNER_TEMP\buffstrap-menu\accounts-dark.png"
+          if (Test-Path $file) {
+            $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file))
+            for ($i = 39000; $i -lt $encoded.Length; $i += 3900) {
               $part = $encoded.Substring($i, [Math]::Min(3900, $encoded.Length - $i))
               Write-Host "::notice title=PREVIEW_accounts_$($i.ToString('D6'))::$part"
             }

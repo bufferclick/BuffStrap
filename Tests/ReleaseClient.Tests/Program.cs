@@ -281,7 +281,7 @@ try
         {
             Interlocked.Increment(ref calls);
             Assert(request.Method == HttpMethod.Get && !request.Headers.Contains("Cookie") && request.RequestUri!.Scheme == "https");
-            return Task.FromResult(request.RequestUri.Host switch
+            return Task.FromResult(request.RequestUri!.Host switch
             {
                 "apis.roblox.com" => JsonResponse(HttpStatusCode.OK, "{\"universeId\":42}"),
                 "games.roblox.com" => JsonResponse(HttpStatusCode.OK, "{\"data\":[{\"id\":42,\"name\":\"Example Game\",\"description\":\"Explore\\nwith friends.\",\"creator\":{\"name\":\"Example Creator\"},\"playing\":1234}]}"),
