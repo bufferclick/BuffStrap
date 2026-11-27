@@ -33,63 +33,11 @@ jobs:
           BUFFSTRAP_MENU_SNAPSHOT_DIR: ${{ runner.temp }}\buffstrap-menu
         run: dotnet run --project .\Tests\UiSmoke.Tests\UiSmoke.Tests.csproj -c Debug --no-build
 
-      # Temporary visual inspection of the redesigned windows.
-      - name: Inspect favorites preview
-        if: always()
-        shell: pwsh
-        run: |
-          $file = "$env:RUNNER_TEMP\buffstrap-menu\favorites-dark.png"
-          if (Test-Path $file) {
-            $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file))
-            for ($i = 0; $i -lt $encoded.Length; $i += 3900) {
-              $part = $encoded.Substring($i, [Math]::Min(3900, $encoded.Length - $i))
-              Write-Host "::notice title=PREVIEW_favorites_$($i.ToString('D6'))::$part"
-            }
-          }
-
-      - name: Inspect favorites preview tail
-        if: always()
-        shell: pwsh
-        run: |
-          $file = "$env:RUNNER_TEMP\buffstrap-menu\favorites-dark.png"
-          if (Test-Path $file) {
-            $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file))
-            for ($i = 39000; $i -lt $encoded.Length; $i += 3900) {
-              $part = $encoded.Substring($i, [Math]::Min(3900, $encoded.Length - $i))
-              Write-Host "::notice title=PREVIEW_favorites_$($i.ToString('D6'))::$part"
-            }
-          }
-
-      - name: Inspect accounts preview
-        if: always()
-        shell: pwsh
-        run: |
-          $file = "$env:RUNNER_TEMP\buffstrap-menu\accounts-dark.png"
-          if (Test-Path $file) {
-            $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file))
-            for ($i = 0; $i -lt $encoded.Length; $i += 3900) {
-              $part = $encoded.Substring($i, [Math]::Min(3900, $encoded.Length - $i))
-              Write-Host "::notice title=PREVIEW_accounts_$($i.ToString('D6'))::$part"
-            }
-          }
-
-      - name: Inspect accounts preview tail
-        if: always()
-        shell: pwsh
-        run: |
-          $file = "$env:RUNNER_TEMP\buffstrap-menu\accounts-dark.png"
-          if (Test-Path $file) {
-            $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file))
-            for ($i = 39000; $i -lt $encoded.Length; $i += 3900) {
-              $part = $encoded.Substring($i, [Math]::Min(3900, $encoded.Length - $i))
-              Write-Host "::notice title=PREVIEW_accounts_$($i.ToString('D6'))::$part"
-            }
-          }
-
-      - name: Save menu previews
+      # Renders of the launch menu, accounts and favorites windows for review.
+      - name: Save UI previews
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: buffstrap-menu-preview
+          name: buffstrap-ui-previews
           path: ${{ runner.temp }}\buffstrap-menu\*.png
           if-no-files-found: ignore
