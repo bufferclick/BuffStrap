@@ -14,6 +14,9 @@ namespace Bloxstrap.Utility
     {
         public const int TextureSize = 64;
 
+        /// <summary>Roblox draws the pointer 1:1, so only truly huge art is scaled.</summary>
+        public const int MaximumPointerSize = 128;
+
         private static readonly string[] TexturePaths =
         {
             @"content\textures\Cursors\KeyboardMouse\ArrowCursor.png",
@@ -97,9 +100,23 @@ namespace Bloxstrap.Utility
                 throw new InvalidDataException("The cursor package is too large.");
 
             byte[] cursor = CursorPackage.ExtractArrow(package);
-            // Roblox anchors a pointer texture at its top-left corner, so the
-            // artwork is shifted to put the Windows hotspot there.
-            CursorImage image = CursorImageReader.Read(cursor).ToPointer(TextureSize);
+
+            CursorImage image;
+            if (CursorImageReader.IsPngFile(cursor))
+            {
+                // A Roblox-ready PNG is already laid out the way the client wants
+                // it (art centred on the click point), so it is only re-encoded.
+                image = CursorImageReader.ReadPngImage(cursor);
+            }
+            else
+            {
+                // Windows cursor: keep the native pixel size and centre the hotspot.
+                image = CursorImageReader.Read(cursor).ToPointer(MaximumPointerSize);
+            }
+
+            if (Math.Max(image.Width, image.Height) > MaximumPointerSize)
+                image = image.Resize(MaximumPointerSize);
+
             byte[] png = CursorImageReader.ToPng(image);
 
             name = (name ?? "").Trim();

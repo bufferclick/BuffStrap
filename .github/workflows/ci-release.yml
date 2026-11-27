@@ -17,8 +17,9 @@ jobs:
         with:
           dotnet-version: '6.0.x'
 
-      # Stable tags are exactly vX.Y.Z. Pre-release test builds add -alpha.N to the
-      # same version (for example v1.0.3-alpha.1) and are never published as stable.
+      # Stable tags are exactly vX.Y.Z. Pre-release test builds add -alpha.N or
+      # -alpha.N.M to the same version (v1.0.3-alpha.1, v1.0.7-alpha.2.5) and are
+      # never published as stable.
       - name: Validate release version
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
@@ -27,7 +28,7 @@ jobs:
           $version = [string]$props.Project.PropertyGroup.Version
           $tag = $env:GITHUB_REF_NAME
           $stable = '^v' + [regex]::Escape($version) + '$'
-          $preview = '^v' + [regex]::Escape($version) + '-alpha\.[1-9][0-9]*$'
+          $preview = '^v' + [regex]::Escape($version) + '-alpha\.[1-9][0-9]*(\.[0-9]+)*$'
           if ($tag -notmatch $stable -and $tag -notmatch $preview) {
             throw "Release tag $tag does not match BuffStrap.Version.props (v$version or v$version-alpha.N)."
           }

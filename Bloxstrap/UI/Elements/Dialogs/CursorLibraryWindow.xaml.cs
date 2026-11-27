@@ -71,8 +71,8 @@ namespace Bloxstrap.UI.Elements.Dialogs
                 };
 
                 web.DownloadStarting += OnDownloadStarting;
-                web.Navigate(CursorPackage.LibraryUrl);
-                StatusText.Text = "Pick a cursor set and press Download. BuffStrap imports the zip itself.";
+                web.Navigate(CursorPackage.RobloxLibraryUrl);
+                StatusText.Text = "Pick a cursor pack and press its Roblox PNG download. BuffStrap imports it itself.";
             }
             catch
             {
@@ -81,10 +81,28 @@ namespace Bloxstrap.UI.Elements.Dialogs
             }
         }
 
+        private static readonly string[] LibraryHosts = { "rw-designer.com", "sweezy-cursors.com" };
+
         private static bool IsLibraryUrl(string? uri) =>
             Uri.TryCreate(uri, UriKind.Absolute, out var parsed) && parsed.Scheme == Uri.UriSchemeHttps &&
-            (parsed.Host.Equals("rw-designer.com", StringComparison.OrdinalIgnoreCase) ||
-             parsed.Host.EndsWith(".rw-designer.com", StringComparison.OrdinalIgnoreCase));
+            LibraryHosts.Any(host => parsed.Host.Equals(host, StringComparison.OrdinalIgnoreCase) ||
+                                     parsed.Host.EndsWith("." + host, StringComparison.OrdinalIgnoreCase));
+
+        private void RobloxSource_Click(object sender, RoutedEventArgs e) =>
+            Navigate(CursorPackage.RobloxLibraryUrl, "Pick a cursor pack and press its Roblox PNG download. BuffStrap imports it itself.");
+
+        private void WindowsSource_Click(object sender, RoutedEventArgs e) =>
+            Navigate(CursorPackage.LibraryUrl, "Windows cursor sets work too: download one and BuffStrap converts its arrow.");
+
+        private void Navigate(string url, string message)
+        {
+            try
+            {
+                StatusText.Text = message;
+                Browser.CoreWebView2?.Navigate(url);
+            }
+            catch (Exception) { }
+        }
 
         private void OnDownloadStarting(object? sender, CoreWebView2DownloadStartingEventArgs e)
         {
@@ -97,7 +115,16 @@ namespace Bloxstrap.UI.Elements.Dialogs
             }
             catch { }
 
-            string path = Path.Combine(_downloads, Guid.NewGuid().ToString("N") + ".zip");
+            // Keep the remote extension so a direct .png download is recognised.
+            string extension = ".zip";
+            try
+            {
+                string remote = Path.GetExtension(new Uri(e.DownloadOperation.Uri).AbsolutePath);
+                if (!String.IsNullOrWhiteSpace(remote) && remote.Length <= 5) extension = remote.ToLowerInvariant();
+            }
+            catch { }
+
+            string path = Path.Combine(_downloads, Guid.NewGuid().ToString("N") + extension);
             e.ResultFilePath = path;
             e.Handled = true;   // no save dialog, no Downloads folder
 
