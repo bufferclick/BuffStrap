@@ -18,7 +18,7 @@ jobs:
           dotnet-version: '6.0.x'
 
       # Stable tags are exactly vX.Y.Z. Pre-release test builds add -alpha.N to the
-      # same version (for example v1.1.0-alpha.1) and are never published as stable.
+      # same version (for example v1.0.3-alpha.1) and are never published as stable.
       - name: Validate release version
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
@@ -125,7 +125,7 @@ jobs:
             release/BuffStrap.exe
             release/BuffStrapSetup.exe
 
-  # Pre-release test builds: tags such as v1.1.0-alpha.1. The zip is deliberately
+  # Pre-release test builds: tags such as v1.0.3-alpha.1. The zip is deliberately
   # not named BuffStrap.exe, so setup and the auto-updater can never select it.
   preview:
     needs: build

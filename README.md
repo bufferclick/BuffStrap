@@ -72,7 +72,7 @@ Windows CI also exercises the isolated WebView2 profiles and checks the single-f
 
 ### Pre-release (test) builds
 
-Test builds use the pre-release channel, so they can be tried before anything is released to everyone. Push a pre-release tag such as `v1.1.0-alpha.1` (the version in `BuffStrap.Version.props` must still be `1.1.0`). The release workflow builds and tests both configurations, then publishes a GitHub pre-release containing `BuffStrap-alpha-win-x64.zip` and marks it as a pre-release.
+Test builds use the pre-release channel, so they can be tried before anything is released to everyone. Push a pre-release tag such as `v1.0.3-alpha.1` (the version in `BuffStrap.Version.props` must still be `1.0.3`). The release workflow builds and tests both configurations, then publishes a GitHub pre-release containing `BuffStrap-alpha-win-x64.zip` and marks it as a pre-release.
 
 - `https://buff.is-cool.dev/alpha` lists the newest pre-release with its size, download count and notes, and downloads that zip.
 - The normal site, `BuffStrapSetup.exe` and the automatic updater only ever use the newest **stable** release. Pre-releases are rejected by the shared release client and are excluded from `/releases/latest`, so stable users never receive a test build.
@@ -80,9 +80,9 @@ Test builds use the pre-release channel, so they can be tried before anything is
 - The launch menu shows `(pre-release)` next to the version of a pre-release build.
 - Unzip the test build to a folder you intend to keep and run **BuffStrap.exe**. Do not use `BuffStrapSetup.exe` to test: setup downloads the latest published stable release. Back up your data first; the executable can offer to replace an existing installation. Favorites launched from the menu and new shortcuts use the running build.
 
-To ship it, merge the tested build and publish a stable tag for the same version (for example `v1.1.0`); the pre-release stays visible on the releases page and is skipped by the updater.
+To ship it, merge the tested build and publish a stable tag for the same version (for example `v1.0.3`); the pre-release stays visible on the releases page and is skipped by the updater.
 
-The shared version is in `BuffStrap.Version.props`. The first release was **v1.0.0**. Use small patch increments for fixes (for example, v1.0.1 then v1.0.2), and increment the minor version when appropriate. A stable tag such as `v1.0.1` must match the version in that file, and a pre-release tag must be that same version plus `-alpha.N`. The release workflow builds both self-contained executables and publishes stable releases as GitHub release assets; the installer and updater use the latest published stable release only.
+The shared version is in `BuffStrap.Version.props`. The first release was **v1.0.0**. Version steps are small: one step is **0.0.1** (for example, v1.0.1 then v1.0.2), and a larger update may step up to **0.0.3** at most. Never skip a minor or major version without asking the repository owner first. A stable tag such as `v1.0.1` must match the version in that file, and a pre-release tag must be that same version plus `-alpha.N`. The release workflow builds both self-contained executables and publishes stable releases as GitHub release assets; the installer and updater use the latest published stable release only.
 
 ## Credits
 

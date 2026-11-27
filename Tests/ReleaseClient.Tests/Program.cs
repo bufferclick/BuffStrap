@@ -101,7 +101,7 @@ try
         Reject(Manifest(prerelease: true));
         // Pre-release test builds (vX.Y.Z-alpha.N) are never installed by setup
         // or the updater, whether or not GitHub flags them as pre-releases.
-        foreach (string tag in new[] { "v1.1.0-alpha.1", "v1.1.0-alpha", "v1.1.0-alpha.0", "v1.1.0-alpha.01" })
+        foreach (string tag in new[] { "v1.0.3-alpha.1", "v1.0.3-alpha", "v1.0.3-alpha.0", "v1.0.3-alpha.01" })
         {
             Reject(Manifest(tag: tag));
             Reject(Manifest(tag: tag, prerelease: true));
