@@ -12,6 +12,7 @@ namespace Bloxstrap.UI.ViewModels.Installer
             get
             {
                 string version = string.Format(Strings.Menu_About_Version, App.Version);
+                if (App.IsPreReleaseBuild) return version + " (pre-release)";
                 if (!App.IsActionBuild || App.IsProductionBuild) return version;
                 string commit = App.BuildMetadata.CommitHash;
                 string revision = String.IsNullOrEmpty(commit) ? "" : " " + commit[..Math.Min(commit.Length, 7)];

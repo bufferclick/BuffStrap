@@ -99,6 +99,13 @@ try
         foreach (string tag in new[] { "v1", "1.0.0", "v1.0", "v1.0.0-beta", "v01.0.0", "v1.0.0.1" })
             Reject(Manifest(tag: tag));
         Reject(Manifest(prerelease: true));
+        // Pre-release test builds (vX.Y.Z-alpha.N) are never installed by setup
+        // or the updater, whether or not GitHub flags them as pre-releases.
+        foreach (string tag in new[] { "v1.1.0-alpha.1", "v1.1.0-alpha", "v1.1.0-alpha.0", "v1.1.0-alpha.01" })
+        {
+            Reject(Manifest(tag: tag));
+            Reject(Manifest(tag: tag, prerelease: true));
+        }
         Reject(Manifest(omitApp: true));
         Reject(Manifest(duplicate: true));
         Reject(Manifest(size: 0));
@@ -151,6 +158,8 @@ try
             Manifest(tag: "v1.8.0", notes: "Changes"),
             Manifest(tag: "v1.7.2", prerelease: true),
             Manifest(tag: "v1.7.2", url: "https://evil.example/BuffStrap.exe"),
+            Manifest(tag: "v1.9.0-alpha.2", prerelease: true),
+            Manifest(tag: "v1.9.0-alpha.1"),
             Manifest(tag: "v1.0.0"), "null" }) + "]";
         using var http = new HttpClient(new FakeHandler(Encoding.UTF8.GetBytes(list)));
         var releases = await new ReleaseClient(http).GetStableReleasesAsync();

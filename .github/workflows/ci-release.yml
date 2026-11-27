@@ -17,14 +17,19 @@ jobs:
         with:
           dotnet-version: '6.0.x'
 
+      # Stable tags are exactly vX.Y.Z. Pre-release test builds add -alpha.N to the
+      # same version (for example v1.1.0-alpha.1) and are never published as stable.
       - name: Validate release version
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         run: |
           [xml]$props = Get-Content BuffStrap.Version.props
           $version = [string]$props.Project.PropertyGroup.Version
-          if ($env:GITHUB_REF_NAME -cne "v$version") {
-            throw "Release tag $env:GITHUB_REF_NAME does not match BuffStrap.Version.props (v$version)."
+          $tag = $env:GITHUB_REF_NAME
+          $stable = '^v' + [regex]::Escape($version) + '$'
+          $preview = '^v' + [regex]::Escape($version) + '-alpha\.[1-9][0-9]*$'
+          if ($tag -notmatch $stable -and $tag -notmatch $preview) {
+            throw "Release tag $tag does not match BuffStrap.Version.props (v$version or v$version-alpha.N)."
           }
 
       - name: Restore
@@ -95,9 +100,10 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  # Stable releases: tags that are exactly vX.Y.Z.
   release:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -118,3 +124,44 @@ jobs:
           files: |
             release/BuffStrap.exe
             release/BuffStrapSetup.exe
+
+  # Pre-release test builds: tags such as v1.1.0-alpha.1. The zip is deliberately
+  # not named BuffStrap.exe, so setup and the auto-updater can never select it.
+  preview:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: buffstrap-windows-x64
+          path: release
+
+      - name: Package the test build
+        run: |
+          cd release
+          rm -f BuffStrapSetup.exe
+          zip -q BuffStrap-alpha-win-x64.zip BuffStrap.exe
+          unzip -l BuffStrap-alpha-win-x64.zip
+
+      - name: Publish pre-release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: BuffStrap ${{ github.ref_name }} (pre-release)
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            **Pre-release test build — not a normal release.**
+
+            Download `BuffStrap-alpha-win-x64.zip`, unzip it to a folder you intend to keep, and run **BuffStrap.exe**.
+            Do not use **BuffStrapSetup.exe**: setup and the automatic updater install the latest *stable*
+            release only, and they never pick up pre-releases.
+
+            This build may replace your existing BuffStrap installation, so back up your data first.
+            The launch menu shows `(pre-release)` next to the version.
+          files: |
+            release/BuffStrap-alpha-win-x64.zip
