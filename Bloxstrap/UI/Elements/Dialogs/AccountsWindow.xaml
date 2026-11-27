@@ -17,7 +17,7 @@
             </Grid.RowDefinitions>
             <StackPanel>
                 <TextBlock Text="Switch accounts" FontSize="25" FontWeight="SemiBold" />
-                <TextBlock Text="Choose an account for your next game. This won't switch an already running Roblox client."
+                <TextBlock Text="Pick one account, or Ctrl-click several and start them together. This won't switch an already running Roblox client."
                            Margin="0,5,0,0" FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
             </StackPanel>
             <StackPanel Grid.Row="1" Margin="0,20,0,18">
@@ -35,6 +35,7 @@
                            HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                 <ListBox x:Name="AccountsList" Background="Transparent" BorderThickness="0" Padding="0"
                          HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         SelectionMode="Extended"
                          AutomationProperties.Name="Saved accounts" SelectionChanged="AccountsList_SelectionChanged">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">

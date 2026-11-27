@@ -256,6 +256,14 @@ try
         var roundTrip = CursorImageReader.ReadPngImage(CursorImageReader.ToPng(pointer));
         Assert(roundTrip.Rgba.SequenceEqual(pointer.Rgba), "The exported pointer PNG did not survive a round trip.");
 
+        // Roblox anchors a pointer texture at its top-left corner, so the click
+        // point has to be moved there; otherwise the artwork sits off-centre.
+        var shifted = new CursorImage(3, 2, image.Rgba, hotspotX: 2, hotspotY: 1).ToPointer(4);
+        Assert(shifted.Width == 4 && shifted.Height == 4, "The pointer was not fitted to a square texture.");
+        Assert(shifted.Rgba[3] == 255, "The hotspot pixel should sit at the texture corner.");
+        Assert(shifted.Rgba[(1 * 4 + 1) * 4 + 3] == 255, "The artwork did not move under the hotspot.");
+        Assert(shifted.Rgba[(0 * 4 + 2) * 4 + 3] == 0, "Pixels beyond the cursor art should stay empty.");
+
         // A cursor "install zip" is resolved through its [Arrow] entry.
         var package = new MemoryStream();
         using (var zip = new ZipArchive(package, ZipArchiveMode.Create, true))

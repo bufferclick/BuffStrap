@@ -14,13 +14,53 @@ public sealed class CursorImage
     public int Height { get; }
     public byte[] Rgba { get; }
 
-    public CursorImage(int width, int height, byte[] rgba)
+    /// <summary>The click point inside the image, in source pixels.</summary>
+    public int HotspotX { get; }
+    public int HotspotY { get; }
+
+    public CursorImage(int width, int height, byte[] rgba, int hotspotX = 0, int hotspotY = 0)
     {
         if (width <= 0 || height <= 0 || rgba.Length != width * height * 4)
             throw new ArgumentException("The decoded cursor image is invalid.");
         Width = width;
         Height = height;
         Rgba = rgba;
+        HotspotX = Math.Clamp(hotspotX, 0, width - 1);
+        HotspotY = Math.Clamp(hotspotY, 0, height - 1);
+    }
+
+    /// <summary>
+    /// Fits the cursor into a square texture whose click point is its top-left
+    /// corner (Roblox draws pointers that way, ignoring the Windows hotspot).
+    /// The artwork is shifted so the original hotspot lands on that corner and
+    /// anything outside the square is dropped.
+    /// </summary>
+    public CursorImage ToPointer(int size)
+    {
+        if (size <= 0) throw new ArgumentOutOfRangeException(nameof(size));
+        var output = new byte[size * size * 4];
+        double scaleX = (double)size / Width;
+        double scaleY = (double)size / Height;
+        double offsetX = HotspotX * scaleX;
+        double offsetY = HotspotY * scaleY;
+
+        for (int y = 0; y < size; y++)
+        {
+            int sourceY = (int)Math.Floor((y + offsetY) / scaleY);
+            if (sourceY < 0 || sourceY >= Height) continue;
+            for (int x = 0; x < size; x++)
+            {
+                int sourceX = (int)Math.Floor((x + offsetX) / scaleX);
+                if (sourceX < 0 || sourceX >= Width) continue;
+                int from = (sourceY * Width + sourceX) * 4;
+                int to = (y * size + x) * 4;
+                output[to] = Rgba[from];
+                output[to + 1] = Rgba[from + 1];
+                output[to + 2] = Rgba[from + 2];
+                output[to + 3] = Rgba[from + 3];
+            }
+        }
+        return new CursorImage(size, size, output);
     }
 
     /// <summary>
@@ -126,12 +166,15 @@ public static class CursorImageReader
             throw new InvalidDataException("The file is not a Windows cursor or icon.");
 
         long bestArea = 0;
-        int bestOffset = -1, bestSize = 0;
+        int bestOffset = -1, bestSize = 0, bestHotspotX = 0, bestHotspotY = 0;
+        bool cursor = type == 2;
         for (int index = 0; index < count; index++)
         {
             int entry = start + 6 + index * 16;
             int width = data[entry] == 0 ? 256 : data[entry];
             int height = data[entry + 1] == 0 ? 256 : data[entry + 1];
+            int hotspotX = cursor ? BitConverter.ToUInt16(data, entry + 4) : 0;
+            int hotspotY = cursor ? BitConverter.ToUInt16(data, entry + 6) : 0;
             int size = BitConverter.ToInt32(data, entry + 8);
             int offset = BitConverter.ToInt32(data, entry + 12);
             if (size <= 0 || offset < 0 || start + offset + size > length)
@@ -142,6 +185,8 @@ public static class CursorImageReader
                 bestArea = area;
                 bestOffset = start + offset;
                 bestSize = size;
+                bestHotspotX = hotspotX;
+                bestHotspotY = hotspotY;
             }
         }
 
@@ -151,7 +196,8 @@ public static class CursorImageReader
         var payload = new byte[bestSize];
         Array.Copy(data, bestOffset, payload, 0, bestSize);
 
-        return IsPng(payload) ? ReadPng(payload) : ReadBitmap(payload);
+        CursorImage image = IsPng(payload) ? ReadPng(payload) : ReadBitmap(payload);
+        return new CursorImage(image.Width, image.Height, image.Rgba, bestHotspotX, bestHotspotY);
     }
 
     /// <summary>Decodes a standalone PNG image (used to verify exported pointers).</summary>

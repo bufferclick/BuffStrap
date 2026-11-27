@@ -84,15 +84,25 @@ namespace Bloxstrap.Utility
             if (!File.Exists(packagePath))
                 throw new InvalidDataException("That cursor file no longer exists.");
 
-            byte[] package = File.ReadAllBytes(packagePath);
+            return Import(File.ReadAllBytes(packagePath), Path.GetFileNameWithoutExtension(packagePath));
+        }
+
+        /// <summary>
+        /// Imports already-downloaded bytes (the browser window hands its download
+        /// straight here, so nothing is left in the user's Downloads folder).
+        /// </summary>
+        public static CursorSet Import(byte[] package, string name)
+        {
             if (package.Length > 64 * 1024 * 1024)
                 throw new InvalidDataException("The cursor package is too large.");
 
             byte[] cursor = CursorPackage.ExtractArrow(package);
-            CursorImage image = CursorImageReader.Read(cursor).Resize(TextureSize);
+            // Roblox anchors a pointer texture at its top-left corner, so the
+            // artwork is shifted to put the Windows hotspot there.
+            CursorImage image = CursorImageReader.Read(cursor).ToPointer(TextureSize);
             byte[] png = CursorImageReader.ToPng(image);
 
-            string name = Path.GetFileNameWithoutExtension(packagePath).Trim();
+            name = (name ?? "").Trim();
             if (name.Length == 0) name = "Custom cursor";
             if (name.Length > 60) name = name[..60].Trim();
 
@@ -104,11 +114,11 @@ namespace Bloxstrap.Utility
             File.WriteAllText(Path.Combine(directory, "set.json"), JsonSerializer.Serialize(new SavedSet
             {
                 Name = name,
-                Source = Path.GetFileName(packagePath),
+                Source = "cursor library",
                 ImportedAt = DateTime.UtcNow
             }));
 
-            return new CursorSet { Id = id, Name = name, Source = Path.GetFileName(packagePath), ImportedAt = DateTime.UtcNow };
+            return new CursorSet { Id = id, Name = name, Source = "cursor library", ImportedAt = DateTime.UtcNow };
         }
 
         public static void Remove(CursorSet set)

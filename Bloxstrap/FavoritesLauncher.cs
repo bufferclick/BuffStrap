@@ -101,6 +101,32 @@ namespace Bloxstrap
 
         public static void StartAccountLaunch(Guid accountId, long placeId) => Start(AccountStartInfo(accountId, placeId));
 
+        /// <summary>
+        /// Starts one Roblox instance per selected account. Each child mints its
+        /// own one-time ticket, and the starts are staggered so two clients never
+        /// race for the same shared sign-in state.
+        /// </summary>
+        public static void StartAccountLaunches(IReadOnlyList<Guid> accountIds, long placeId)
+        {
+            if (accountIds.Count == 0) throw new ArgumentException("Select at least one account.", nameof(accountIds));
+
+            if (accountIds.Count == 1)
+            {
+                StartAccountLaunch(accountIds[0], placeId);
+                return;
+            }
+
+            _ = Task.Run(async () =>
+            {
+                foreach (Guid id in accountIds)
+                {
+                    try { Start(AccountStartInfo(id, placeId)); }
+                    catch (Exception) { /* One account failing must not stop the rest. */ }
+                    await Task.Delay(TimeSpan.FromSeconds(3));
+                }
+            });
+        }
+
         public static void StartPlace(long placeId) => Start(PlaceStartInfo(placeId));
     }
 }

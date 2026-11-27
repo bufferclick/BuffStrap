@@ -1,11 +1,11 @@
 <Project>
-  <!-- Keep release tags and both Windows executables in sync (for example v1.0.4).
+  <!-- Keep release tags and both Windows executables in sync (for example v1.0.5).
        Version steps are small: one step is 0.0.1, and a larger update may step
        up to 0.0.3 at most. Pre-release test builds use v<version>-alpha.<number>
-       tags (for example v1.0.4-alpha.1) and never change this version. -->
+       tags (for example v1.0.5-alpha.1) and never change this version. -->
   <PropertyGroup>
-    <Version>1.0.4</Version>
-    <FileVersion>1.0.4.0</FileVersion>
+    <Version>1.0.5</Version>
+    <FileVersion>1.0.5.0</FileVersion>
     <Authors>Buffer</Authors>
     <Company>Buffer</Company>
   </PropertyGroup>
