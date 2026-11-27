@@ -699,14 +699,22 @@ namespace Bloxstrap
                 // reapplied on every launch because roblox can reset the file on its own.
                 AppStorageManager.Apply();
 
+                // Same for the custom pointer: a client update or repair puts the
+                // stock texture back, and a second install may never see a mod copy.
+                Bloxstrap.Utility.CustomCursors.EnsureInstalled();
+
                 if (App.LaunchSettings.SelectedAccountId.HasValue)
                 {
-                    if (App.LaunchSettings.SelectedAccountPlaceId is not long placeId || placeId <= 0)
-                        throw new InvalidOperationException("The selected account has no valid game.");
                     long tracker = (long)System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 1000000) * 1000000 +
                         System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 1000000);
-                    _launchCommandLine = BuffStrap.Accounts.RobloxAccountClient.BuildPlayerUri(
-                        AccountTicketPlaceholder, placeId, tracker, DateTimeOffset.UtcNow, Guid.NewGuid());
+                    // No game chosen: the account still signs in, and Roblox opens
+                    // its own Home screen instead of joining a place.
+                    if (App.LaunchSettings.SelectedAccountPlaceId is long placeId && placeId > 0)
+                        _launchCommandLine = BuffStrap.Accounts.RobloxAccountClient.BuildPlayerUri(
+                            AccountTicketPlaceholder, placeId, tracker, DateTimeOffset.UtcNow, Guid.NewGuid());
+                    else
+                        _launchCommandLine = BuffStrap.Accounts.RobloxAccountClient.BuildHomeUri(
+                            AccountTicketPlaceholder, tracker, DateTimeOffset.UtcNow);
                 }
 
                 GameJoin gameJoin = new();

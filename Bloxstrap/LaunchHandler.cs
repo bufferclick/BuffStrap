@@ -56,9 +56,10 @@ namespace Bloxstrap
             }
             else if (App.LaunchSettings.AccountFlag.Active || App.LaunchSettings.AccountPlaceFlag.Active)
             {
+                long.TryParse(App.LaunchSettings.AccountPlaceFlag.Data, NumberStyles.None, CultureInfo.InvariantCulture, out long placeId);
+
                 if (!App.LaunchSettings.FavoriteFlag.Active && App.LaunchSettings.RobloxLaunchMode == LaunchMode.None &&
-                    Guid.TryParse(App.LaunchSettings.AccountFlag.Data, out Guid accountId) && accountId != Guid.Empty &&
-                    long.TryParse(App.LaunchSettings.AccountPlaceFlag.Data, NumberStyles.None, CultureInfo.InvariantCulture, out long placeId) && placeId > 0)
+                    Guid.TryParse(App.LaunchSettings.AccountFlag.Data, out Guid accountId) && accountId != Guid.Empty)
                     FavoritesLauncher.LaunchAccount(accountId, placeId);
                 else
                 {

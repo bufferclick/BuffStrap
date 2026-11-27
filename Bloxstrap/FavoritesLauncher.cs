@@ -45,12 +45,13 @@ namespace Bloxstrap
 
         private static void PrepareAccountLaunch(Guid accountId, long placeId)
         {
-            if (accountId == Guid.Empty || placeId <= 0) throw new RobloxAccountException("The account launch request is invalid.");
+            if (accountId == Guid.Empty) throw new RobloxAccountException("The account launch request is invalid.");
             // Never replace a missing, expired, or rejected account with the
             // current Roblox session. A fresh ticket is requested at launch.
             AccountSessions.RequireSaved(accountId);
             App.LaunchSettings.SelectedAccountId = accountId;
-            App.LaunchSettings.SelectedAccountPlaceId = placeId;
+            // A game is optional: without one Roblox opens its Home screen.
+            App.LaunchSettings.SelectedAccountPlaceId = placeId > 0 ? placeId : null;
             App.LaunchSettings.RobloxLaunchArgs = "";
         }
 
@@ -82,8 +83,10 @@ namespace Bloxstrap
 
         internal static ProcessStartInfo AccountStartInfo(Guid accountId, long placeId)
         {
-            if (accountId == Guid.Empty || placeId <= 0) throw new ArgumentException("Invalid account or place ID.");
-            return CreateChildStartInfo("-account", accountId.ToString("D"), "-accountplace", placeId.ToString(CultureInfo.InvariantCulture));
+            if (accountId == Guid.Empty) throw new ArgumentException("Invalid account ID.");
+            if (placeId > 0)
+                return CreateChildStartInfo("-account", accountId.ToString("D"), "-accountplace", placeId.ToString(CultureInfo.InvariantCulture));
+            return CreateChildStartInfo("-account", accountId.ToString("D"));
         }
 
         internal static ProcessStartInfo PlaceStartInfo(long placeId)

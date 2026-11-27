@@ -220,6 +220,20 @@ public sealed class RobloxAccountClient
         return null;
     }
 
+    /// <summary>
+    /// Launch URI for the account's Home screen: the client still receives the
+    /// one-time ticket, but no place is requested.
+    /// </summary>
+    public static string BuildHomeUri(string ticket, long trackerId, DateTimeOffset time)
+    {
+        if (!IsSafeHeader(ticket) || trackerId <= 0)
+            throw new ArgumentException("Invalid Roblox launch information.");
+        return "roblox-player:1+launchmode:app+gameinfo:" + Uri.EscapeDataString(ticket) +
+            "+launchtime:" + time.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture) +
+            "+browsertrackerid:" + trackerId.ToString(CultureInfo.InvariantCulture) +
+            "+robloxLocale:en_us+gameLocale:en_us";
+    }
+
     public static string BuildPlayerUri(string ticket, long placeId, long trackerId, DateTimeOffset time, Guid attemptId)
     {
         if (!IsSafeHeader(ticket) || placeId <= 0 || trackerId <= 0 || attemptId == Guid.Empty)
