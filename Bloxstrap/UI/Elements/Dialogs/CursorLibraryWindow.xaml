@@ -18,6 +18,12 @@
                        TextWrapping="Wrap" />
             <TextBlock Text="Roblox draws its pointer from one image, so a set contributes its normal arrow only. It appears the next time Roblox starts through BuffStrap."
                        TextWrapping="Wrap" Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <ui:Button x:Name="RobloxSourceButton" Content="Roblox PNG packs" Click="RobloxSource_Click"
+                           ToolTip="Packs made for Roblox: 64x64 PNGs, no conversion needed" />
+                <ui:Button x:Name="WindowsSourceButton" Margin="8,0,0,0" Content="Windows cursors" Click="WindowsSource_Click"
+                           ToolTip="Windows .cur/.ani schemes, converted to Roblox's pointer" />
+            </StackPanel>
         </StackPanel>
         <web:WebView2 x:Name="Browser" Grid.Row="2" Margin="18,0,18,0" />
         <Grid Grid.Row="3" Margin="18,12,18,18">

@@ -256,13 +256,34 @@ try
         var roundTrip = CursorImageReader.ReadPngImage(CursorImageReader.ToPng(pointer));
         Assert(roundTrip.Rgba.SequenceEqual(pointer.Rgba), "The exported pointer PNG did not survive a round trip.");
 
-        // Roblox anchors a pointer texture at its top-left corner, so the click
-        // point has to be moved there; otherwise the artwork sits off-centre.
-        var shifted = new CursorImage(3, 2, image.Rgba, hotspotX: 2, hotspotY: 1).ToPointer(4);
-        Assert(shifted.Width == 4 && shifted.Height == 4, "The pointer was not fitted to a square texture.");
-        Assert(shifted.Rgba[3] == 255, "The hotspot pixel should sit at the texture corner.");
-        Assert(shifted.Rgba[(1 * 4 + 1) * 4 + 3] == 255, "The artwork did not move under the hotspot.");
-        Assert(shifted.Rgba[(0 * 4 + 2) * 4 + 3] == 0, "Pixels beyond the cursor art should stay empty.");
+        // Roblox clicks the middle of the pointer texture and draws it at its own
+        // pixel size, so the Windows hotspot has to land in the centre and the art
+        // must not be stretched to fill the canvas.
+        var marks = new byte[5 * 5 * 4];
+        foreach (var (mx, my) in new[] { (1, 1), (3, 3) })
+        {
+            int index = (my * 5 + mx) * 4;
+            marks[index] = marks[index + 1] = marks[index + 2] = marks[index + 3] = 255;
+        }
+
+        var centred = new CursorImage(5, 5, marks, hotspotX: 1, hotspotY: 1).ToPointer(128);
+        Assert(centred.Width == 64 && centred.Height == 64, "A small cursor should sit in a 64x64 texture.");
+        int middle = (32 * 64 + 32) * 4;
+        Assert(centred.Rgba[middle + 3] == 255, "The hotspot pixel must be in the middle of the texture.");
+        Assert(centred.Rgba[(34 * 64 + 34) * 4 + 3] == 255, "The artwork did not keep its offset from the hotspot.");
+        Assert(centred.Rgba[(0 * 64 + 0) * 4 + 3] == 0, "The rest of the texture must stay transparent.");
+
+        var solid32 = new byte[32 * 32 * 4];
+        for (int i = 3; i < solid32.Length; i += 4) solid32[i] = 255;
+        var native = new CursorImage(32, 32, solid32, hotspotX: 0, hotspotY: 0).ToPointer(128);
+        Assert(native.Width == 64, "A 32px cursor should keep a 64px texture.");
+        Assert(native.Rgba[(32 * 64 + 32) * 4 + 3] == 255, "The 32px artwork was not placed at the hotspot.");
+        Assert(native.Rgba[(32 * 64 + 31) * 4 + 3] == 0, "The 32px cursor was stretched instead of kept at its size.");
+
+        // Packs that ship ready Roblox PNGs must be taken as they are.
+        var readyPng = CursorImageReader.ToPng(new CursorImage(64, 64, new byte[64 * 64 * 4]));
+        Assert(CursorPackage.ExtractArrow(readyPng).SequenceEqual(readyPng),
+            "A Roblox-ready PNG was altered instead of being passed through.");
 
         // A cursor "install zip" is resolved through its [Arrow] entry.
         var package = new MemoryStream();

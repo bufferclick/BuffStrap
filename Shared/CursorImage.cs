@@ -30,37 +30,67 @@ public sealed class CursorImage
     }
 
     /// <summary>
-    /// Fits the cursor into a square texture whose click point is its top-left
-    /// corner (Roblox draws pointers that way, ignoring the Windows hotspot).
-    /// The artwork is shifted so the original hotspot lands on that corner and
-    /// anything outside the square is dropped.
+    /// Distance in pixels from the hotspot to the furthest opaque pixel.
     /// </summary>
-    public CursorImage ToPointer(int size)
+    public int PointerExtent()
     {
-        if (size <= 0) throw new ArgumentOutOfRangeException(nameof(size));
-        var output = new byte[size * size * 4];
-        double scaleX = (double)size / Width;
-        double scaleY = (double)size / Height;
-        double offsetX = HotspotX * scaleX;
-        double offsetY = HotspotY * scaleY;
-
-        for (int y = 0; y < size; y++)
+        int extent = 0;
+        for (int y = 0; y < Height; y++)
         {
-            int sourceY = (int)Math.Floor((y + offsetY) / scaleY);
-            if (sourceY < 0 || sourceY >= Height) continue;
-            for (int x = 0; x < size; x++)
+            for (int x = 0; x < Width; x++)
             {
-                int sourceX = (int)Math.Floor((x + offsetX) / scaleX);
+                if (Rgba[(y * Width + x) * 4 + 3] == 0) continue;
+                extent = Math.Max(extent, Math.Max(Math.Abs(x - HotspotX), Math.Abs(y - HotspotY)));
+            }
+        }
+        return extent;
+    }
+
+    /// <summary>
+    /// Prepares a Roblox pointer texture. Roblox draws the image at its own pixel
+    /// size and treats the middle of the texture as the click point, which is why
+    /// its own cursor art sits centred with the arrow tip in the middle of the
+    /// canvas. So the artwork keeps its native size (a 32px Windows cursor stays
+    /// 32px instead of being blown up) and the hotspot is placed exactly in the
+    /// middle. Only oversized art is scaled down.
+    /// </summary>
+    public CursorImage ToPointer(int maximumSize)
+    {
+        if (maximumSize <= 0) throw new ArgumentOutOfRangeException(nameof(maximumSize));
+
+        int extent = Math.Max(1, PointerExtent());
+        int canvas = Math.Max(64, extent * 2);
+        double scale = 1.0;
+
+        if (canvas > maximumSize)
+        {
+            scale = (double)maximumSize / canvas;
+            canvas = maximumSize;
+        }
+
+        double half = canvas / 2.0;
+        var output = new byte[canvas * canvas * 4];
+
+        for (int y = 0; y < canvas; y++)
+        {
+            int sourceY = (int)Math.Floor((y + 0.5 - half) / scale + HotspotY);
+            if (sourceY < 0 || sourceY >= Height) continue;
+
+            for (int x = 0; x < canvas; x++)
+            {
+                int sourceX = (int)Math.Floor((x + 0.5 - half) / scale + HotspotX);
                 if (sourceX < 0 || sourceX >= Width) continue;
+
                 int from = (sourceY * Width + sourceX) * 4;
-                int to = (y * size + x) * 4;
+                int to = (y * canvas + x) * 4;
                 output[to] = Rgba[from];
                 output[to + 1] = Rgba[from + 1];
                 output[to + 2] = Rgba[from + 2];
                 output[to + 3] = Rgba[from + 3];
             }
         }
-        return new CursorImage(size, size, output);
+
+        return new CursorImage(canvas, canvas, output);
     }
 
     /// <summary>
@@ -206,6 +236,9 @@ public static class CursorImageReader
         if (!IsPng(data)) throw new InvalidDataException("The file is not a PNG image.");
         return ReadPng(data);
     }
+
+    public static bool IsPngFile(byte[] data) =>
+        data is not null && data.Length >= 8 && data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47;
 
     private static bool IsPng(byte[] data) =>
         data.Length > 8 && data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47;
@@ -540,7 +573,14 @@ public static class CursorImageReader
 /// <summary>Extracts the normal-pointer cursor from a downloaded cursor package.</summary>
 public static class CursorPackage
 {
+    /// <summary>Windows cursor schemes (.cur/.ani zips) — needs conversion.</summary>
     public const string LibraryUrl = "https://www.rw-designer.com/cursor-library";
+
+    /// <summary>
+    /// Packs that ship ready 64x64 Roblox PNGs, so no conversion and no hotspot
+    /// maths is involved: what the site gives you is exactly what Roblox draws.
+    /// </summary>
+    public const string RobloxLibraryUrl = "https://sweezy-cursors.com/specials/custom-cursors-for-roblox/";
 
     /// <summary>
     /// Returns the cursor bytes for the package: a .cur/.ani file is used as-is,
@@ -554,6 +594,9 @@ public static class CursorPackage
 
         if (package[0] == 'P' && package[1] == 'K')
             return ExtractFromZip(package);
+
+        if (CursorImageReader.IsPngFile(package))
+            return package;
 
         CursorImageReader.Read(package);
         return package;
@@ -579,17 +622,21 @@ public static class CursorPackage
             if (match is not null)
             {
                 var bytes = ReadAll(match, 4 * 1024 * 1024);
-                CursorImageReader.Read(bytes);
-                return bytes;
+                if (IsUsable(bytes)) return bytes;
             }
         }
 
-        // No scheme file: prefer an obvious default pointer, then the largest cursor.
+        // No scheme file. Roblox-ready packs ship ArrowCursor.png, so a PNG named
+        // like the stock texture wins; otherwise prefer an obvious default pointer.
         var candidates = entries
             .Where(x => x.Name.EndsWith(".cur", StringComparison.OrdinalIgnoreCase) ||
-                        x.Name.EndsWith(".ani", StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(x => x.Name.Contains("normal", StringComparison.OrdinalIgnoreCase) ||
-                                    x.Name.Contains("arrow", StringComparison.OrdinalIgnoreCase) ||
+                        x.Name.EndsWith(".ani", StringComparison.OrdinalIgnoreCase) ||
+                        x.Name.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(x => x.Name.Equals("ArrowCursor.png", StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(x => x.Name.Equals("ArrowFarCursor.png", StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(x => x.Name.Contains("arrow", StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(x => x.Name.Contains("normal", StringComparison.OrdinalIgnoreCase) ||
+                                    x.Name.Contains("pointer", StringComparison.OrdinalIgnoreCase) ||
                                     x.Name.Contains("select", StringComparison.OrdinalIgnoreCase))
             .ThenByDescending(x => x.Length)
             .ToList();
@@ -597,12 +644,7 @@ public static class CursorPackage
         foreach (var candidate in candidates)
         {
             var bytes = ReadAll(candidate, 4 * 1024 * 1024);
-            try
-            {
-                CursorImageReader.Read(bytes);
-                return bytes;
-            }
-            catch (InvalidDataException) { }
+            if (IsUsable(bytes)) return bytes;
         }
 
         throw new InvalidDataException("The package does not contain a usable cursor.");
