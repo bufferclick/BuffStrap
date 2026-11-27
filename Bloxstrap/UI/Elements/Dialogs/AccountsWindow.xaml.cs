@@ -117,12 +117,8 @@ namespace Bloxstrap.UI.Elements.Dialogs
             if (cards.Count == 0) return;
             try
             {
-                long? placeId = GameShortcut.ParsePlaceId(PlaceBox.Text);
-                if (!placeId.HasValue)
-                {
-                    Frontend.ShowMessageBox("Enter a valid Roblox game link or place ID first.", MessageBoxImage.Warning);
-                    return;
-                }
+                // The game is optional; an empty box launches the Home screen.
+                long placeId = GameShortcut.ParsePlaceId(PlaceBox.Text) ?? 0;
 
                 var missing = cards.FirstOrDefault(x => !AccountSessions.IsSaved(x.Account));
                 if (missing is not null)
@@ -134,7 +130,7 @@ namespace Bloxstrap.UI.Elements.Dialogs
                 foreach (var card in cards)
                     AccountSessions.RequireSaved(card.Account.Id);
 
-                FavoritesLauncher.StartAccountLaunches(cards.Select(x => x.Account.Id).ToList(), placeId.Value);
+                FavoritesLauncher.StartAccountLaunches(cards.Select(x => x.Account.Id).ToList(), placeId);
             }
             catch (Exception ex) { Frontend.ShowMessageBox(SafeError(ex), MessageBoxImage.Warning); }
         }

@@ -64,7 +64,7 @@
 
         <controls:OptionControl
             Header="Custom cursor set"
-            Description="Roblox draws its pointer with a single 64x64 image, so BuffStrap imports the normal arrow from a Windows cursor package. Get cursors opens the rw-designer cursor library in your browser; download a set, then press Import. The built-in presets above write the same image, so whichever you choose last wins.">
+            Description="Roblox draws its pointer with a single 64x64 image, so BuffStrap imports the normal arrow from a Windows cursor package. Get cursors opens the cursor library inside BuffStrap: press a set's Download and it lands in this list straight away. The image is also written into every installed Roblox client at once. Check writes it again and reports what is on disk.">
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="44" Height="44" CornerRadius="8" Background="{DynamicResource ControlFillColorSecondaryBrush}">
@@ -79,6 +79,9 @@
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <ui:Button Icon="ArrowDownload16" Content="Get cursors" Command="{Binding OpenCursorLibraryCommand}" />
                     <ui:Button Margin="6,0,0,0" Icon="FolderOpen16" Content="Import" Command="{Binding ImportCursorCommand}" />
+                    <ui:Button Margin="6,0,0,0" Icon="Checkmark16" Content="Check"
+                               ToolTip="Apply the selected set to every installed Roblox client and report what is on disk"
+                               Command="{Binding CheckCursorCommand}" />
                     <ui:Button Margin="6,0,0,0" Icon="Delete16" Content="Remove" Appearance="Danger"
                                ToolTip="Remove the selected custom cursor set" Command="{Binding RemoveCursorCommand}" />
                 </StackPanel>

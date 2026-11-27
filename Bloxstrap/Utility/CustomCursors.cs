@@ -158,6 +158,13 @@ namespace Bloxstrap.Utility
         /// </summary>
         public static void Apply(CursorSet? set)
         {
+            if (set is null)
+            {
+                // Selecting none must actually give Roblox its own pointer back,
+                // including the copies already written into the client folders.
+                CursorInstall.Restore();
+            }
+
             foreach (string relative in TexturePaths)
             {
                 string target = Path.Combine(Paths.Modifications, relative);
@@ -177,6 +184,32 @@ namespace Bloxstrap.Utility
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 Filesystem.AssertReadOnly(target);
                 File.Copy(set.ImagePath, target, true);
+            }
+
+            if (set is not null)
+            {
+                // Applied at once as well, so a launch that does not re-copy mods
+                // (or a client installed in another folder) still shows it.
+                try { CursorInstall.Push(File.ReadAllBytes(set.ImagePath)); }
+                catch (Exception ex) { App.Logger.WriteLine("CustomCursors::Apply", ex.Message); }
+            }
+        }
+
+        /// <summary>
+        /// Re-writes the active set into every installed client. Called on each
+        /// launch because a Roblox update or repair can restore its own texture.
+        /// </summary>
+        public static void EnsureInstalled()
+        {
+            try
+            {
+                CursorSet? active = Active();
+                if (active is null) return;
+                CursorInstall.Push(File.ReadAllBytes(active.ImagePath));
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine("CustomCursors::EnsureInstalled", ex.Message);
             }
         }
 

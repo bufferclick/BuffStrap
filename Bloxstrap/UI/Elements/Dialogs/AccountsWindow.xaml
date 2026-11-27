@@ -17,12 +17,12 @@
             </Grid.RowDefinitions>
             <StackPanel>
                 <TextBlock Text="Switch accounts" FontSize="25" FontWeight="SemiBold" />
-                <TextBlock Text="Pick one account, or Ctrl-click several and start them together. This won't switch an already running Roblox client."
+                <TextBlock Text="Pick one account, or Ctrl-click several and start them together. A game is optional: without one, Roblox opens its Home screen. This won't switch an already running Roblox client."
                            Margin="0,5,0,0" FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
             </StackPanel>
             <StackPanel Grid.Row="1" Margin="0,20,0,18">
-                <TextBlock Text="GAME LINK OR PLACE ID" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
-                <ui:TextBox x:Name="PlaceBox" Margin="0,7,0,0" PlaceholderText="Paste a Roblox game link or place ID"
+                <TextBlock Text="GAME LINK OR PLACE ID (OPTIONAL)" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                <ui:TextBox x:Name="PlaceBox" Margin="0,7,0,0" PlaceholderText="Optional - leave empty to open Roblox's Home screen"
                             AutomationProperties.Name="Game link or place ID" />
             </StackPanel>
             <Grid Grid.Row="2" Margin="0,0,0,8">

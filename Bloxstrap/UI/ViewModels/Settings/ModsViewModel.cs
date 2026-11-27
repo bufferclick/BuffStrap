@@ -105,6 +105,22 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
         public ICommand RemoveCursorCommand => new RelayCommand(RemoveCursor);
 
+        public ICommand CheckCursorCommand => new RelayCommand(CheckCursor);
+
+        private void CheckCursor()
+        {
+            try
+            {
+                string report = Bloxstrap.Utility.CursorInstall.Repair(SelectedCursorSet?.Set);
+                ReloadCursorSets();
+                Frontend.ShowMessageBox(report, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Frontend.ShowMessageBox("The cursor check failed.\n\n" + ex.Message, MessageBoxImage.Warning);
+            }
+        }
+
         private void OpenCursorLibrary()
         {
             // A small built-in browser hands downloads straight to BuffStrap, so

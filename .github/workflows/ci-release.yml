@@ -125,6 +125,21 @@ jobs:
             release/BuffStrap.exe
             release/BuffStrapSetup.exe
 
+      # Community notification. The webhook lives in a repository secret so it is
+      # never written into this public repository.
+      - name: Notify Discord (stable)
+        continue-on-error: true
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_STABLE_WEBHOOK }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "DISCORD_STABLE_WEBHOOK is not set; skipping the announcement."
+            exit 0
+          fi
+          body=$(jq -n --arg url "https://github.com/bufferclick/BuffStrap/releases/tag/$TAG" --arg tag "$TAG"             '{username: "BuffStrap", content: ("**BuffStrap " + $tag + " is out.**\nDownload: " + $url + "\nOr use the site: https://buff.is-cool.dev")}')
+          curl -sS -f -H "Content-Type: application/json" -d "$body" "$WEBHOOK"
+
   # Pre-release test builds: tags such as v1.0.3-alpha.1. The zip is deliberately
   # not named BuffStrap.exe, so setup and the auto-updater can never select it.
   preview:
@@ -165,3 +180,23 @@ jobs:
             The launch menu shows `(pre-release)` next to the version.
           files: |
             release/BuffStrap-alpha-win-x64.zip
+
+      # Alpha testers get a ping on their own channel. A second webhook is needed
+      # because a Discord webhook can only post to the channel it was created in.
+      - name: Notify Discord (alpha testers)
+        continue-on-error: true
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_ALPHA_WEBHOOK }}
+          FALLBACK: ${{ secrets.DISCORD_STABLE_WEBHOOK }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            if [ -z "$FALLBACK" ]; then
+              echo "No Discord webhook configured; skipping the alpha announcement."
+              exit 0
+            fi
+            echo "DISCORD_ALPHA_WEBHOOK is not set; using the stable webhook."
+            WEBHOOK="$FALLBACK"
+          fi
+          body=$(jq -n --arg tag "$TAG"             '{username: "BuffStrap", content: ("<@&1575803182431342686> **New alpha version available: " + $tag + "**\nHead to https://buff.is-cool.dev/alpha/"), allowed_mentions: {roles: ["1575803182431342686"]}}')
+          curl -sS -f -H "Content-Type: application/json" -d "$body" "$WEBHOOK"
