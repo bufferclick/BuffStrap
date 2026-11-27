@@ -52,15 +52,23 @@ namespace Bloxstrap.UI.Elements.Dialogs
 
         private void AccountsList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => UpdateSelection();
 
+        private List<AccountCard> SelectedCards() =>
+            AccountsList.SelectedItems.Cast<AccountCard>().ToList();
+
         private void UpdateSelection()
         {
             // During XAML initialization the footer may not exist yet.
             if (PlayAccountButton is null || ReconnectButton is null || RemoveButton is null || SelectionHint is null) return;
-            var card = AccountsList.SelectedItem as AccountCard;
-            ReconnectButton.IsEnabled = RemoveButton.IsEnabled = card is not null;
-            PlayAccountButton.IsEnabled = card is not null && AccountSessions.IsSaved(card.Account);
-            SelectionHint.Text = card is null ? "Select an account to play or manage it." :
-                "Selected for this launch: " + card.Username + ". Roblox may update its shared last-signed-in account.";
+            var cards = SelectedCards();
+            // Managing an account is a single-account action; launching supports many.
+            ReconnectButton.IsEnabled = RemoveButton.IsEnabled = cards.Count == 1;
+            PlayAccountButton.IsEnabled = cards.Count > 0 && cards.All(x => AccountSessions.IsSaved(x.Account));
+            SelectionHint.Text = cards.Count switch
+            {
+                0 => "Select an account to play or manage it.",
+                1 => "Selected for this launch: " + cards[0].Username + ". Roblox may update its shared last-signed-in account.",
+                _ => $"{cards.Count} accounts selected: each one starts its own Roblox instance, a few seconds apart."
+            };
         }
 
         private async void Add_Click(object sender, RoutedEventArgs e) => await SignInAsync(null);
@@ -105,7 +113,8 @@ namespace Bloxstrap.UI.Elements.Dialogs
 
         private void Play_Click(object sender, RoutedEventArgs e)
         {
-            if (AccountsList.SelectedItem is not AccountCard card) return;
+            var cards = SelectedCards();
+            if (cards.Count == 0) return;
             try
             {
                 long? placeId = GameShortcut.ParsePlaceId(PlaceBox.Text);
@@ -114,8 +123,18 @@ namespace Bloxstrap.UI.Elements.Dialogs
                     Frontend.ShowMessageBox("Enter a valid Roblox game link or place ID first.", MessageBoxImage.Warning);
                     return;
                 }
-                AccountSessions.RequireSaved(card.Account.Id);
-                FavoritesLauncher.StartAccountLaunch(card.Account.Id, placeId.Value);
+
+                var missing = cards.FirstOrDefault(x => !AccountSessions.IsSaved(x.Account));
+                if (missing is not null)
+                {
+                    Frontend.ShowMessageBox("Sign in again to " + missing.Username + " before launching it.", MessageBoxImage.Warning);
+                    return;
+                }
+
+                foreach (var card in cards)
+                    AccountSessions.RequireSaved(card.Account.Id);
+
+                FavoritesLauncher.StartAccountLaunches(cards.Select(x => x.Account.Id).ToList(), placeId.Value);
             }
             catch (Exception ex) { Frontend.ShowMessageBox(SafeError(ex), MessageBoxImage.Warning); }
         }

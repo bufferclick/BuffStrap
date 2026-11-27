@@ -105,9 +105,32 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
         public ICommand RemoveCursorCommand => new RelayCommand(RemoveCursor);
 
-        private static void OpenCursorLibrary()
+        private void OpenCursorLibrary()
         {
-            Process.Start(new ProcessStartInfo(Bloxstrap.Utility.CustomCursors.LibraryUrl) { UseShellExecute = true });
+            // A small built-in browser hands downloads straight to BuffStrap, so
+            // the cursor zip never lands in the user's Downloads folder.
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
+            {
+                try
+                {
+                    var window = new Bloxstrap.UI.Elements.Dialogs.CursorLibraryWindow { Owner = Application.Current?.MainWindow };
+                    window.ShowDialog();
+                    ReloadCursorSets();
+                    if (window.ImportedSetId is string id)
+                        SelectedCursorSet = CursorSets.FirstOrDefault(x => x.Set.Id == id) ?? SelectedCursorSet;
+                    return;
+                }
+                catch (Exception) { /* Fall back to the system browser below. */ }
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(Bloxstrap.Utility.CustomCursors.LibraryUrl) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Frontend.ShowMessageBox("Could not open the cursor library. " + ex.Message, MessageBoxImage.Warning);
+            }
         }
 
         private static BitmapSource? LoadImage(string path)
