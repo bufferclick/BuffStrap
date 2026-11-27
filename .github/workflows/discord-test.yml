@@ -1,0 +1,51 @@
+name: Discord test
+
+# Manual only. Sends the same announcement the release workflow sends, so the
+# webhook secrets can be checked without cutting a new version.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which channel to test
+        required: true
+        default: alpha
+        type: choice
+        options:
+          - alpha
+          - stable
+      tag:
+        description: Version tag to show in the message
+        required: true
+        default: v1.0.6-alpha.1
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post the announcement
+        env:
+          TARGET: ${{ inputs.target }}
+          TAG: ${{ inputs.tag }}
+          ALPHA_WEBHOOK: ${{ secrets.DISCORD_ALPHA_WEBHOOK }}
+          STABLE_WEBHOOK: ${{ secrets.DISCORD_STABLE_WEBHOOK }}
+        run: |
+          if [ "$TARGET" = "alpha" ]; then
+            if [ -z "$ALPHA_WEBHOOK" ]; then
+              echo "DISCORD_ALPHA_WEBHOOK is not set." >&2
+              exit 1
+            fi
+            body=$(jq -n --arg tag "$TAG" \
+              '{username: "BuffStrap", content: ("<@&1575803182431342686> **New alpha version available: " + $tag + "**\nHead to https://buff.is-cool.dev/alpha/"), allowed_mentions: {roles: ["1575803182431342686"]}}')
+            webhook="$ALPHA_WEBHOOK"
+          else
+            if [ -z "$STABLE_WEBHOOK" ]; then
+              echo "DISCORD_STABLE_WEBHOOK is not set." >&2
+              exit 1
+            fi
+            body=$(jq -n --arg tag "$TAG" \
+              '{username: "BuffStrap", content: ("**BuffStrap " + $tag + " is out.**\nDownload: https://github.com/bufferclick/BuffStrap/releases/tag/" + $tag + "\nOr use the site: https://buff.is-cool.dev")}')
+            webhook="$STABLE_WEBHOOK"
+          fi
+
+          echo "Posting the $TARGET announcement for $TAG..."
+          curl -sS -f -H "Content-Type: application/json" -d "$body" "$webhook" -o /dev/null -w "Discord answered %{http_code}\n"
