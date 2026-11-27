@@ -109,11 +109,11 @@ namespace Bloxstrap.UI.Elements.Dialogs
         private void OnDownloadStateChanged(CoreWebView2DownloadOperation operation, string path, string name)
         {
             if (_closed) return;
-            if (operation.State == CoreWebView2DownloadOperationState.Completed)
+            if (operation.State == CoreWebView2DownloadState.Completed)
             {
                 Import(path, name);
             }
-            else if (operation.State == CoreWebView2DownloadOperationState.Interrupted)
+            else if (operation.State == CoreWebView2DownloadState.Interrupted)
             {
                 StatusText.Text = "That download did not finish. Try the set again, or use Import with a saved zip.";
             }
