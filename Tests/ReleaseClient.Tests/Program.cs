@@ -2,6 +2,7 @@ using BuffStrap.Release;
 using BuffStrap.Favorites;
 using BuffStrap.Backup;
 using BuffStrap.Accounts;
+using BuffStrap.Cursors;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
@@ -151,6 +152,140 @@ try
         }
         throw new Exception("Expected cancellation.");
     });
+    await Test("imports Windows cursor packages for Roblox's pointer texture", () =>
+    {
+        // A 3x2 cursor stored bottom-up, the way Windows stores .cur images.
+        // channel order is checked on the 32-bit image, transparency on a 24-bit
+        // image, where the AND mask really is the only transparency.
+        static byte[] BuildCursor(int bitCount)
+        {
+            const int width = 3, height = 2;
+            int xorRow = ((width * bitCount + 31) / 32) * 4;
+            int maskRow = ((width + 31) / 32) * 4;
+            var xor = new byte[xorRow * height];
+            for (int y = 0; y < height; y++)
+            {
+                int row = (height - 1 - y) * xorRow;   // bottom-up
+                for (int x = 0; x < width; x++)
+                {
+                    int i = row + x * (bitCount / 8);
+                    xor[i] = (byte)(30 + x * 10);       // blue
+                    xor[i + 1] = 20;                    // green
+                    xor[i + 2] = 10;                    // red
+                    if (bitCount == 32) xor[i + 3] = 255;
+                }
+            }
+
+            var mask = new byte[maskRow * height];
+            mask[1 * maskRow] = 0b01000000;             // top image row, middle pixel
+
+            var dib = new List<byte>();
+            dib.AddRange(BitConverter.GetBytes(40));
+            dib.AddRange(BitConverter.GetBytes(width));
+            dib.AddRange(BitConverter.GetBytes(height * 2));
+            dib.AddRange(BitConverter.GetBytes((short)1));
+            dib.AddRange(BitConverter.GetBytes((short)bitCount));
+            dib.AddRange(BitConverter.GetBytes(0));
+            dib.AddRange(BitConverter.GetBytes(xor.Length + mask.Length));
+            for (int i = 0; i < 4; i++) dib.AddRange(BitConverter.GetBytes(0));
+            dib.AddRange(xor);
+            dib.AddRange(mask);
+
+            var cur = new List<byte>();
+            cur.AddRange(BitConverter.GetBytes((short)0));
+            cur.AddRange(BitConverter.GetBytes((short)2));
+            cur.AddRange(BitConverter.GetBytes((short)1));
+            cur.Add(width); cur.Add(height); cur.Add(0); cur.Add(0);
+            cur.AddRange(BitConverter.GetBytes((short)0));
+            cur.AddRange(BitConverter.GetBytes((short)0));
+            cur.AddRange(BitConverter.GetBytes(dib.Count));
+            cur.AddRange(BitConverter.GetBytes(22));
+            cur.AddRange(dib);
+            return cur.ToArray();
+        }
+
+        static byte[] BuildAnimated(byte[] frame)
+        {
+            var framPayload = new List<byte> { (byte)'f', (byte)'r', (byte)'a', (byte)'m' };
+            framPayload.AddRange(new byte[] { (byte)'i', (byte)'c', (byte)'o', (byte)'n' });
+            framPayload.AddRange(BitConverter.GetBytes(frame.Length));
+            framPayload.AddRange(frame);
+            if (frame.Length % 2 != 0) framPayload.Add(0);
+
+            var list = new List<byte> { (byte)'L', (byte)'I', (byte)'S', (byte)'T' };
+            list.AddRange(BitConverter.GetBytes(framPayload.Count));
+            list.AddRange(framPayload);
+
+            var anih = new List<byte> { (byte)'a', (byte)'n', (byte)'i', (byte)'h' };
+            anih.AddRange(BitConverter.GetBytes(36));
+            anih.AddRange(BitConverter.GetBytes(1));      // frames
+            anih.AddRange(BitConverter.GetBytes(1));      // steps
+            for (int i = 0; i < 7; i++) anih.AddRange(BitConverter.GetBytes(0));
+
+            var body = new List<byte>(anih);
+            body.AddRange(list);
+            var ani = new List<byte> { (byte)'R', (byte)'I', (byte)'F', (byte)'F' };
+            ani.AddRange(BitConverter.GetBytes(body.Count + 4));
+            ani.AddRange(new byte[] { (byte)'A', (byte)'C', (byte)'O', (byte)'N' });
+            ani.AddRange(body);
+            return ani.ToArray();
+        }
+
+        static void WriteEntry(ZipArchive zip, string name, byte[] bytes)
+        {
+            using var entry = zip.CreateEntry(name).Open();
+            entry.Write(bytes, 0, bytes.Length);
+        }
+
+        byte[] cursor = BuildCursor(32);
+        var image = CursorImageReader.Read(cursor);
+        Assert(image.Width == 3 && image.Height == 2, "The cursor size was not read.");
+        Assert(image.Rgba[0] == 10 && image.Rgba[1] == 20 && image.Rgba[2] == 30 && image.Rgba[3] == 255,
+            "The top row was read upside down or with the wrong channel order.");
+
+        var masked = CursorImageReader.Read(BuildCursor(24));
+        Assert(masked.Rgba[0] == 10 && masked.Rgba[2] == 30, "The 24-bit cursor colours were misread.");
+        Assert(masked.Rgba[(0 * 3 + 1) * 4 + 3] == 0, "The AND mask did not clear a transparent pixel.");
+        Assert(masked.Rgba[(1 * 3 + 1) * 4 + 3] == 255, "The AND mask cleared the wrong row.");
+
+        var animated = CursorImageReader.Read(BuildAnimated(cursor));
+        Assert(animated.Rgba.SequenceEqual(image.Rgba), "The animated cursor frame differs from the static one.");
+
+        var pointer = image.Resize(64);
+        Assert(pointer.Width == 64 && pointer.Height == 64, "The pointer was not resized to the Roblox texture size.");
+        var roundTrip = CursorImageReader.ReadPngImage(CursorImageReader.ToPng(pointer));
+        Assert(roundTrip.Rgba.SequenceEqual(pointer.Rgba), "The exported pointer PNG did not survive a round trip.");
+
+        // A cursor "install zip" is resolved through its [Arrow] entry.
+        var package = new MemoryStream();
+        using (var zip = new ZipArchive(package, ZipArchiveMode.Create, true))
+        {
+            WriteEntry(zip, "install.inf", Encoding.UTF8.GetBytes("[Arrow]\nPath=Arrow.ani\n\n[Hand]\nPath=Hand.cur\n"));
+            WriteEntry(zip, "Arrow.ani", BuildAnimated(cursor));
+            WriteEntry(zip, "Hand.cur", cursor);
+        }
+
+        byte[] extracted = CursorPackage.ExtractArrow(package.ToArray());
+        Assert(extracted[0] == 'R' && extracted[1] == 'I', "The [Arrow] entry was not selected from the package.");
+        Assert(CursorImageReader.Read(extracted).Rgba.SequenceEqual(image.Rgba), "The packaged cursor did not decode.");
+
+        // Without a scheme file the obvious default pointer is used, and junk is rejected.
+        var loose = new MemoryStream();
+        using (var zip = new ZipArchive(loose, ZipArchiveMode.Create, true))
+        {
+            WriteEntry(zip, "Cinnamoroll Normal Select.cur", cursor);
+            WriteEntry(zip, "readme.txt", Encoding.UTF8.GetBytes("cursors"));
+        }
+        Assert(CursorImageReader.Read(CursorPackage.ExtractArrow(loose.ToArray())).Rgba.SequenceEqual(image.Rgba),
+            "The default pointer was not chosen from a package without an .inf file.");
+
+        bool rejected = false;
+        try { CursorPackage.ExtractArrow(Encoding.UTF8.GetBytes("not a cursor")); }
+        catch (InvalidDataException) { rejected = true; }
+        Assert(rejected, "A file that is not a cursor was accepted.");
+        return Task.CompletedTask;
+    });
+
     await Test("lists only validated stable releases in version order with notes", async () =>
     {
         string list = "[" + String.Join(",", new[] {

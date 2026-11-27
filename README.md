@@ -44,6 +44,14 @@ The account manager uses an **unofficial** Roblox web-to-player flow: it checks 
 
 The repair dialog checks common installation registrations, Player launch links, shortcuts and the Roblox Player executable, displays its findings, and asks before applying selected fixes. A selected Roblox Player file repair is scheduled for the next Player launch and may need a network connection. Close Roblox and other BuffStrap processes before scheduling it. It keeps settings, favorites, mods and Roblox login data. This is not a full integrity scan; if BuffStrap's own executable is missing or invalid, reinstall BuffStrap using the official setup or Update Center.
 
+## Custom cursors
+
+**Settings → Mods → Custom cursor set** imports cursors from a site such as the [rw-designer cursor library](https://www.rw-designer.com/cursor-library). **Get cursors** opens the library, and **Import** accepts the downloaded package (`.zip`, `.cur`, `.ani`, or a scheme `.inf`); the file picker starts on the newest cursor package in your Downloads folder.
+
+Roblox does not use Windows cursor schemes: it draws its pointer from a single 64×64 image (`ArrowCursor.png`, plus the distant variant). BuffStrap therefore reads the package's `[Arrow]` entry, decodes the `.cur`/`.ani` (including animated ones) itself, and stores a 64×64 copy under `%LocalAppData%\BuffStrap\CursorSets`, which is written to the mods folder and applied the next time Roblox starts. Other cursor states in a set (text, hand, resize) have no Roblox equivalent and are not used. The built-in 2006/2013 presets write the same image, so whichever you choose last wins.
+
+Only import cursor sets you are allowed to use; the set's licence is in its own readme. BuffStrap never runs anything from an imported package.
+
 ## Roblox app themes
 
 BuffStrap's existing Roblox light/dark setting is retained. Set it to **Default** to leave Roblox's own theme selection alone, including any curated themes Roblox makes available to your account. Roblox's [desktop theme settings](https://en.help.roblox.com/hc/en-us/articles/360022922852-Changing-Your-App-Theme-Light-Dark-and-System) do not document an API for arbitrary custom themes. Custom bootstrapper themes affect BuffStrap's launch window only.

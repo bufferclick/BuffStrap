@@ -1,5 +1,7 @@
-﻿using System.Windows;
+﻿using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 
 using Microsoft.Win32;
 
@@ -59,6 +61,136 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
         public ICommand OpenModsFolderCommand => new RelayCommand(OpenModsFolder);
 
+        // Custom cursors: a Windows cursor package is reduced to the one pointer
+        // image Roblox actually draws, then written to the mods folder.
+        public ObservableCollection<CursorSetItem> CursorSets { get; } = new();
+
+        private bool _refreshingCursorSets;
+        private CursorSetItem? _selectedCursorSet;
+
+        public sealed class CursorSetItem
+        {
+            public Bloxstrap.Utility.CustomCursors.CursorSet Set { get; init; } = null!;
+            public string Name => Set.Name;
+            public BitmapSource? Image { get; init; }
+        }
+
+        public CursorSetItem? SelectedCursorSet
+        {
+            get => _selectedCursorSet;
+            set
+            {
+                if (ReferenceEquals(_selectedCursorSet, value)) return;
+                _selectedCursorSet = value;
+                OnPropertyChanged(nameof(SelectedCursorSet));
+                OnPropertyChanged(nameof(SelectedCursorSetImage));
+                if (_refreshingCursorSets) return;
+                try
+                {
+                    Bloxstrap.Utility.CustomCursors.Apply(value?.Set);
+                }
+                catch (Exception ex)
+                {
+                    Frontend.ShowMessageBox("Could not apply that cursor set.\n\n" + ex.Message, MessageBoxImage.Error);
+                    ReloadCursorSets();
+                }
+            }
+        }
+
+        public BitmapSource? SelectedCursorSetImage => _selectedCursorSet?.Image;
+
+        public ICommand OpenCursorLibraryCommand => new RelayCommand(OpenCursorLibrary);
+
+        public ICommand ImportCursorCommand => new RelayCommand(ImportCursor);
+
+        public ICommand RemoveCursorCommand => new RelayCommand(RemoveCursor);
+
+        private static void OpenCursorLibrary()
+        {
+            Process.Start(new ProcessStartInfo(Bloxstrap.Utility.CustomCursors.LibraryUrl) { UseShellExecute = true });
+        }
+
+        private static BitmapSource? LoadImage(string path)
+        {
+            try
+            {
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+                image.UriSource = new Uri(path, UriKind.Absolute);
+                image.EndInit();
+                image.Freeze();
+                return image;
+            }
+            catch (Exception) { return null; }
+        }
+
+        private void ReloadCursorSets()
+        {
+            _refreshingCursorSets = true;
+            try
+            {
+                CursorSets.Clear();
+                foreach (var set in Bloxstrap.Utility.CustomCursors.List())
+                    CursorSets.Add(new CursorSetItem { Set = set, Image = LoadImage(set.ImagePath) });
+
+                var active = Bloxstrap.Utility.CustomCursors.Active();
+                _selectedCursorSet = active is null ? null : CursorSets.FirstOrDefault(x => x.Set.Id == active.Id);
+                OnPropertyChanged(nameof(SelectedCursorSet));
+                OnPropertyChanged(nameof(SelectedCursorSetImage));
+            }
+            finally { _refreshingCursorSets = false; }
+        }
+
+        private void ImportCursor()
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import a cursor package",
+                Filter = "Cursor packages (*.zip;*.cur;*.ani;*.inf)|*.zip;*.cur;*.ani;*.inf|All files (*.*)|*.*",
+                CheckFileExists = true
+            };
+
+            // Start on the newest cursor download so "Install zip" from a cursor
+            // site can be imported with one click.
+            string? recent = Bloxstrap.Utility.CustomCursors.FindRecentDownload();
+            if (recent is not null) dialog.FileName = Path.GetFileName(recent);
+            if (recent is not null) dialog.InitialDirectory = Path.GetDirectoryName(recent);
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                var imported = Bloxstrap.Utility.CustomCursors.Import(dialog.FileName);
+                ReloadCursorSets();
+                SelectedCursorSet = CursorSets.FirstOrDefault(x => x.Set.Id == imported.Id) ?? SelectedCursorSet;
+            }
+            catch (Exception ex)
+            {
+                Frontend.ShowMessageBox("That file does not contain a usable Windows cursor.\n\n" + ex.Message, MessageBoxImage.Warning);
+            }
+        }
+
+        private void RemoveCursor()
+        {
+            if (_selectedCursorSet is null)
+            {
+                Frontend.ShowMessageBox("Choose a custom cursor set first.", MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                Bloxstrap.Utility.CustomCursors.Remove(_selectedCursorSet.Set);
+                ReloadCursorSets();
+            }
+            catch (Exception ex)
+            {
+                Frontend.ShowMessageBox("Could not remove that cursor set.\n\n" + ex.Message, MessageBoxImage.Warning);
+            }
+        }
+
         public Visibility ChooseCustomFontVisibility => !String.IsNullOrEmpty(TextFontTask.NewState) ? Visibility.Collapsed : Visibility.Visible;
 
         public Visibility DeleteCustomFontVisibility => !String.IsNullOrEmpty(TextFontTask.NewState) ? Visibility.Visible : Visibility.Collapsed;
@@ -101,6 +233,8 @@ namespace Bloxstrap.UI.ViewModels.Settings
         });
 
         public FontModPresetTask TextFontTask { get; } = new();
+
+        public ModsViewModel() => ReloadCursorSets();
 
         private void OpenCompatSettings()
         {
