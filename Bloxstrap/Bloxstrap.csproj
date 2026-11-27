@@ -19,6 +19,7 @@
     
   <ItemGroup>
     <Resource Include="Bloxstrap.ico" />
+    <Resource Include="Resources\BuffStrapAlpha.png" />
     <Resource Include="Resources\BuffStrapWordmark-Dark.png" />
     <Resource Include="Resources\BuffStrapWordmark-Light.png" />
     <Resource Include="Resources\BootstrapperStyles\TerminalDialog\Powershell.png" />

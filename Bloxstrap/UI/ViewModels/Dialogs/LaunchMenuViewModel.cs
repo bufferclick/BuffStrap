@@ -30,7 +30,23 @@ namespace Bloxstrap.UI.ViewModels.Installer
 
         public event EventHandler<NextAction>? CloseWindowRequest;
 
-        private void LaunchSettings() => CloseWindowRequest?.Invoke(this, NextAction.LaunchSettings);
+        /// <summary>Raised when Global settings is pressed with Alt+Shift+Control held.</summary>
+        public event EventHandler? FactoryResetRequested;
+
+        private void LaunchSettings()
+        {
+            // Hidden gesture. Holding all three modifiers turns this one action
+            // into a factory reset, so the destructive option has no button of its own.
+            const ModifierKeys resetKeys = ModifierKeys.Alt | ModifierKeys.Shift | ModifierKeys.Control;
+
+            if ((Keyboard.Modifiers & resetKeys) == resetKeys)
+            {
+                FactoryResetRequested?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            CloseWindowRequest?.Invoke(this, NextAction.LaunchSettings);
+        }
 
         private void LaunchRoblox() => CloseWindowRequest?.Invoke(this, NextAction.LaunchRoblox);
 

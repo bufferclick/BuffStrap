@@ -62,6 +62,12 @@ BuffStrap's existing Roblox light/dark setting is retained. Set it to **Default*
 
 We also investigated non-launcher options. **Mods** can override some local files such as cursors, sounds or fonts; their effect depends on the current Roblox version and does not uniformly recolor the menus of every experience. A separate, non-injecting screen overlay could tint the whole image, but it cannot selectively restyle Roblox controls and may not appear over full-screen windows. Injected shaders or code can modify the running client; Roblox [warns that modified clients can lead to enforcement](https://devforum.roblox.com/t/an-update-on-automated-action-against-modified-clients/3640609). BuffStrap does not inject such code or promise that third-party overlays are approved. Experience creators can style UI they control in [Roblox Studio](https://create.roblox.com/docs/ui/styling), which is different from changing other people's games.
 
+## Alpha builds and factory reset
+
+Pre-release builds (`vX.Y.Z-alpha.N`) wear the alpha mark: the hourglass logo replaces the usual one on the launch menu, in the taskbar and on the About page. The version line says `(pre-release)`.
+
+Holding **Alt + Shift + Control** while choosing **Global settings** on the launch menu turns that action into a factory reset. After one confirmation, BuffStrap deletes its own data folder — settings, saved account sessions, favorites, imported cursors, logs and installed client copies — and reopens itself in the state it would be in after a fresh install. The running executable is kept, and no Roblox, game or Windows file is touched.
+
 ## Release notifications
 
 `.github/workflows/ci-release.yml` posts to Discord after publishing:
