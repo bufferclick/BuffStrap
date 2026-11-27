@@ -70,7 +70,7 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
         public sealed class CursorSetItem
         {
-            public Utility.CustomCursors.CursorSet Set { get; init; } = null!;
+            public Bloxstrap.Utility.CustomCursors.CursorSet Set { get; init; } = null!;
             public string Name => Set.Name;
             public BitmapSource? Image { get; init; }
         }
@@ -87,7 +87,7 @@ namespace Bloxstrap.UI.ViewModels.Settings
                 if (_refreshingCursorSets) return;
                 try
                 {
-                    Utility.CustomCursors.Apply(value?.Set);
+                    Bloxstrap.Utility.CustomCursors.Apply(value?.Set);
                 }
                 catch (Exception ex)
                 {
@@ -107,7 +107,7 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
         private static void OpenCursorLibrary()
         {
-            Process.Start(new ProcessStartInfo(Utility.CustomCursors.LibraryUrl) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(Bloxstrap.Utility.CustomCursors.LibraryUrl) { UseShellExecute = true });
         }
 
         private static BitmapSource? LoadImage(string path)
@@ -132,10 +132,10 @@ namespace Bloxstrap.UI.ViewModels.Settings
             try
             {
                 CursorSets.Clear();
-                foreach (var set in Utility.CustomCursors.List())
+                foreach (var set in Bloxstrap.Utility.CustomCursors.List())
                     CursorSets.Add(new CursorSetItem { Set = set, Image = LoadImage(set.ImagePath) });
 
-                var active = Utility.CustomCursors.Active();
+                var active = Bloxstrap.Utility.CustomCursors.Active();
                 _selectedCursorSet = active is null ? null : CursorSets.FirstOrDefault(x => x.Set.Id == active.Id);
                 OnPropertyChanged(nameof(SelectedCursorSet));
                 OnPropertyChanged(nameof(SelectedCursorSetImage));
@@ -154,7 +154,7 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
             // Start on the newest cursor download so "Install zip" from a cursor
             // site can be imported with one click.
-            string? recent = Utility.CustomCursors.FindRecentDownload();
+            string? recent = Bloxstrap.Utility.CustomCursors.FindRecentDownload();
             if (recent is not null) dialog.FileName = Path.GetFileName(recent);
             if (recent is not null) dialog.InitialDirectory = Path.GetDirectoryName(recent);
 
@@ -162,7 +162,7 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
             try
             {
-                var imported = Utility.CustomCursors.Import(dialog.FileName);
+                var imported = Bloxstrap.Utility.CustomCursors.Import(dialog.FileName);
                 ReloadCursorSets();
                 SelectedCursorSet = CursorSets.FirstOrDefault(x => x.Set.Id == imported.Id) ?? SelectedCursorSet;
             }
@@ -182,7 +182,7 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
             try
             {
-                Utility.CustomCursors.Remove(_selectedCursorSet.Set);
+                Bloxstrap.Utility.CustomCursors.Remove(_selectedCursorSet.Set);
                 ReloadCursorSets();
             }
             catch (Exception ex)
