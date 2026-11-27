@@ -1,25 +1,28 @@
-using System.Windows;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 
-using Bloxstrap.UI.Elements.About;
 using Bloxstrap.UI.Elements.Dialogs;
 
 namespace Bloxstrap.UI.ViewModels.Installer
 {
     public class LaunchMenuViewModel
     {
-        public string Version => string.Format(Strings.Menu_About_Version, App.Version);
-
-        public Visibility RobloxStudioOptionVisibility => App.IsStudioVisible ? Visibility.Visible : Visibility.Collapsed;
+        public string Version
+        {
+            get
+            {
+                string version = string.Format(Strings.Menu_About_Version, App.Version);
+                if (App.IsPreReleaseBuild) return version + " (pre-release)";
+                if (!App.IsActionBuild || App.IsProductionBuild) return version;
+                string commit = App.BuildMetadata.CommitHash;
+                string revision = String.IsNullOrEmpty(commit) ? "" : " " + commit[..Math.Min(commit.Length, 7)];
+                return version + " · test build" + revision;
+            }
+        }
 
         public ICommand LaunchSettingsCommand => new RelayCommand(LaunchSettings);
 
         public ICommand LaunchRobloxCommand => new RelayCommand(LaunchRoblox);
-
-        public ICommand LaunchRobloxStudioCommand => new RelayCommand(LaunchRobloxStudio);
-
-        public ICommand LaunchAboutCommand => new RelayCommand(LaunchAbout);
 
         public ICommand LaunchFavoritesCommand => new RelayCommand(LaunchFavorites);
 
@@ -30,10 +33,6 @@ namespace Bloxstrap.UI.ViewModels.Installer
         private void LaunchSettings() => CloseWindowRequest?.Invoke(this, NextAction.LaunchSettings);
 
         private void LaunchRoblox() => CloseWindowRequest?.Invoke(this, NextAction.LaunchRoblox);
-
-        private void LaunchRobloxStudio() => CloseWindowRequest?.Invoke(this, NextAction.LaunchRobloxStudio);
-
-        private void LaunchAbout() => new MainWindow().ShowDialog();
 
         private void LaunchFavorites() => new FavoritesWindow().ShowDialog();
 

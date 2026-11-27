@@ -99,6 +99,13 @@ try
         foreach (string tag in new[] { "v1", "1.0.0", "v1.0", "v1.0.0-beta", "v01.0.0", "v1.0.0.1" })
             Reject(Manifest(tag: tag));
         Reject(Manifest(prerelease: true));
+        // Pre-release test builds (vX.Y.Z-alpha.N) are never installed by setup
+        // or the updater, whether or not GitHub flags them as pre-releases.
+        foreach (string tag in new[] { "v1.1.0-alpha.1", "v1.1.0-alpha", "v1.1.0-alpha.0", "v1.1.0-alpha.01" })
+        {
+            Reject(Manifest(tag: tag));
+            Reject(Manifest(tag: tag, prerelease: true));
+        }
         Reject(Manifest(omitApp: true));
         Reject(Manifest(duplicate: true));
         Reject(Manifest(size: 0));
@@ -151,6 +158,8 @@ try
             Manifest(tag: "v1.8.0", notes: "Changes"),
             Manifest(tag: "v1.7.2", prerelease: true),
             Manifest(tag: "v1.7.2", url: "https://evil.example/BuffStrap.exe"),
+            Manifest(tag: "v1.9.0-alpha.2", prerelease: true),
+            Manifest(tag: "v1.9.0-alpha.1"),
             Manifest(tag: "v1.0.0"), "null" }) + "]";
         using var http = new HttpClient(new FakeHandler(Encoding.UTF8.GetBytes(list)));
         var releases = await new ReleaseClient(http).GetStableReleasesAsync();
@@ -184,6 +193,8 @@ try
         {
             step++;
             Assert(request.RequestUri!.Scheme == "https");
+            Assert(request.Headers.Referrer?.AbsoluteUri == "https://www.roblox.com/" &&
+                request.Headers.GetValues("Origin").Single() == "https://www.roblox.com", "The Roblox web origin was not included.");
             string cookie = request.Headers.GetValues("Cookie").Single();
             HttpResponseMessage response;
             if (step == 1)
@@ -270,6 +281,55 @@ try
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 1, 2, 3 }) });
         }));
         Assert((await new RobloxAccountClient(http).GetAvatarAsync(42))!.SequenceEqual(new byte[] { 1, 2, 3 }) && calls == 2);
+    });
+    await Test("favorite previews fetch public game details and Roblox-hosted icons without account cookies", async () =>
+    {
+        byte[] png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=");
+        int calls = 0;
+        using var http = new HttpClient(new LambdaHandler(request =>
+        {
+            Interlocked.Increment(ref calls);
+            Assert(request.Method == HttpMethod.Get && !request.Headers.Contains("Cookie") && request.RequestUri!.Scheme == "https");
+            return Task.FromResult(request.RequestUri!.Host switch
+            {
+                "apis.roblox.com" => JsonResponse(HttpStatusCode.OK, "{\"universeId\":42}"),
+                "games.roblox.com" => JsonResponse(HttpStatusCode.OK, "{\"data\":[{\"id\":42,\"name\":\"Example Game\",\"description\":\"Explore\\nwith friends.\",\"creator\":{\"name\":\"Example Creator\"},\"playing\":1234}]}"),
+                "thumbnails.roblox.com" => JsonResponse(HttpStatusCode.OK, "{\"data\":[{\"targetId\":42,\"state\":\"Completed\",\"imageUrl\":\"https://tr.rbxcdn.com/icon.png\"}]}"),
+                "tr.rbxcdn.com" => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(png) },
+                _ => throw new InvalidOperationException("An untrusted preview host was contacted.")
+            });
+        }));
+        var preview = await new RobloxGamePreviewClient(http).GetAsync(1818);
+        Assert(preview is not null && preview.PlaceId == 1818 && preview.Name == "Example Game" &&
+            preview.Description == "Explore with friends." && preview.Creator == "Example Creator" && preview.Playing == 1234 &&
+            preview.IconPng!.SequenceEqual(png) && calls == 4, "The game preview was incomplete.");
+    });
+    await Test("favorite previews reject untrusted icons and malformed responses without blocking favorites", async () =>
+    {
+        int calls = 0;
+        using (var http = new HttpClient(new LambdaHandler(request =>
+        {
+            Interlocked.Increment(ref calls);
+            Assert(!request.Headers.Contains("Cookie"));
+            return Task.FromResult(request.RequestUri!.Host switch
+            {
+                "apis.roblox.com" => JsonResponse(HttpStatusCode.OK, "{\"universeId\":42}"),
+                "games.roblox.com" => JsonResponse(HttpStatusCode.OK, "{\"data\":[{\"id\":42,\"name\":\"Safe\",\"description\":\"A game\"}]}"),
+                "thumbnails.roblox.com" => JsonResponse(HttpStatusCode.OK, "{\"data\":[{\"targetId\":42,\"state\":\"Completed\",\"imageUrl\":\"https://rbxcdn.com.evil.test/icon.png\"}]}"),
+                _ => throw new InvalidOperationException("The untrusted icon was requested.")
+            });
+        })))
+        {
+            var preview = await new RobloxGamePreviewClient(http).GetAsync(1818);
+            Assert(preview is not null && preview.Name == "Safe" && preview.IconPng is null && calls == 3);
+        }
+        using (var http = new HttpClient(new LambdaHandler(_ => Task.FromResult(JsonResponse(HttpStatusCode.OK, "{\"universeId\":\"not a number\"}")))))
+            Assert(await new RobloxGamePreviewClient(http).GetAsync(1818) is null, "A malformed universe was accepted.");
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        using var noNetwork = new HttpClient(new LambdaHandler(_ => throw new InvalidOperationException("Cancelled request reached the network.")));
+        try { await new RobloxGamePreviewClient(noNetwork).GetAsync(1818, cancelled.Token); throw new Exception("Cancellation was ignored."); }
+        catch (OperationCanceledException) { }
     });
     await Test("favorites preserve concurrent edits and track only the newest 50 joins", async () =>
     {

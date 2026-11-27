@@ -46,6 +46,10 @@ namespace Bloxstrap
 
         public static bool IsProductionBuild => IsActionBuild && BuildMetadata.CommitRef.StartsWith("tag", StringComparison.Ordinal);
 
+        // Pre-release test builds are tagged vX.Y.Z-alpha.N and published to the
+        // pre-release channel only. Setup and the updater never install them.
+        public static bool IsPreReleaseBuild => IsActionBuild && BuildMetadata.CommitRef.Contains("-alpha.", StringComparison.Ordinal);
+
         public static bool IsStudioVisible => !String.IsNullOrEmpty(App.RobloxState.Prop.Studio.VersionGuid);
 
         public static readonly MD5 MD5Provider = MD5.Create();

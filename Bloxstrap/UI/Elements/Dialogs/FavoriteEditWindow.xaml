@@ -3,28 +3,47 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:base="clr-namespace:Bloxstrap.UI.Elements.Base"
-        Title="Favorite game" Width="510" MinWidth="0" MinHeight="0" SizeToContent="Height"
+        Title="Favorite game" Width="540" MinWidth="0" MinHeight="0" SizeToContent="Height"
         ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ExtendsContentIntoTitleBar="True"
         Background="{ui:ThemeResource ApplicationBackgroundBrush}">
     <Grid Background="{DynamicResource MainWindowBackgroundBrush}">
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <ui:TitleBar Grid.Row="0" Padding="8" Title="Favorite game" Icon="pack://application:,,,/Bloxstrap.ico"
                      ShowMinimize="False" ShowMaximize="False" CanMaximize="False" />
-        <StackPanel Grid.Row="1" Margin="20,12,20,16">
-            <TextBlock Text="Name" />
-            <ui:TextBox x:Name="NameBox" Margin="0,5,0,12" PlaceholderText="Game name" />
+        <StackPanel Grid.Row="1" Margin="22,12,22,18">
+            <TextBlock x:Name="EditorHeading" Text="Add a game to your collection" FontSize="20" FontWeight="SemiBold" />
+            <TextBlock Text="Paste a Roblox link and we'll look up its public details." FontSize="12" Margin="0,4,0,16"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
             <TextBlock Text="Roblox game link or place ID" />
-            <ui:TextBox x:Name="PlaceBox" Margin="0,5,0,12" PlaceholderText="https://www.roblox.com/games/..." />
+            <ui:TextBox x:Name="PlaceBox" Margin="0,5,0,10" PlaceholderText="https://www.roblox.com/games/..." TextChanged="PlaceBox_TextChanged" />
+            <Border CornerRadius="8" Padding="10" Background="{DynamicResource ControlFillColorSecondaryBrush}" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="68" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Border Width="58" Height="58" CornerRadius="6" HorizontalAlignment="Left" Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}">
+                        <Grid>
+                            <ui:SymbolIcon Symbol="Games24" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Image x:Name="PreviewIcon" Stretch="UniformToFill" />
+                        </Grid>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="PreviewTitle" Text="Game preview" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="PreviewDescription" Text="Enter a game link to load its details." FontSize="12" Margin="0,3,0,0" MaxHeight="36"
+                                   TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <TextBlock Text="Favorite name" />
+            <ui:TextBox x:Name="NameBox" Margin="0,5,0,12" PlaceholderText="Game name" />
             <TextBlock Text="Folder" />
             <ui:TextBox x:Name="FolderBox" Margin="0,5,0,12" PlaceholderText="Optional folder name" />
             <TextBlock Text="Account" />
             <ComboBox x:Name="AccountBox" Margin="0,5,0,0" />
-            <TextBlock Text="Sign in through Account Manager first. Assigned favorites use that account; they never fall back to another session."
+            <TextBlock Text="Assigned favorites use that saved account; they never fall back to another session."
                        Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
         </StackPanel>
         <Border Grid.Row="2" Padding="16" Background="{ui:ThemeResource SolidBackgroundFillColorSecondaryBrush}">
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                <ui:Button Content="Save" MinWidth="90" Click="Save_Click" />
+                <ui:Button Content="Save" Appearance="Primary" MinWidth="90" Click="Save_Click" />
                 <ui:Button Content="Cancel" MinWidth="90" Margin="8,0,0,0" IsCancel="True" />
             </StackPanel>
         </Border>

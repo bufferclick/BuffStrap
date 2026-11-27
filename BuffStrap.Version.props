@@ -1,8 +1,10 @@
 <Project>
-  <!-- Keep release tags and both Windows executables in sync (for example v1.0.2). -->
+  <!-- Keep release tags and both Windows executables in sync (for example v1.1.0).
+       Pre-release test builds use v<version>-alpha.<number> tags (for example
+       v1.1.0-alpha.1) and never change this version. -->
   <PropertyGroup>
-    <Version>1.0.2</Version>
-    <FileVersion>1.0.2.0</FileVersion>
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
     <Authors>Buffer</Authors>
     <Company>Buffer</Company>
   </PropertyGroup>

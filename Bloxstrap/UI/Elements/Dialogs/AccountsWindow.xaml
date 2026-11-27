@@ -3,82 +3,95 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:base="clr-namespace:Bloxstrap.UI.Elements.Base"
-        Title="BuffStrap Accounts" Width="860" Height="660" MinWidth="680" MinHeight="520"
+        Title="BuffStrap Accounts" Width="620" Height="730" MinWidth="540" MinHeight="580"
         WindowStartupLocation="CenterOwner" ExtendsContentIntoTitleBar="True"
         Background="{ui:ThemeResource ApplicationBackgroundBrush}">
     <Grid Background="{DynamicResource MainWindowBackgroundBrush}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <ui:TitleBar Grid.Row="0" Padding="8" Title="Account Manager" Icon="pack://application:,,,/Bloxstrap.ico"
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <ui:TitleBar Grid.Row="0" Padding="8" Title="Accounts" Icon="pack://application:,,,/Bloxstrap.ico"
                      ShowMinimize="False" ShowMaximize="False" CanMaximize="False" />
         <Grid Grid.Row="1" Margin="24,12,24,24">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                <RowDefinition Height="*" /><RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Grid Grid.Row="0" Margin="0,0,0,20">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock Text="Your accounts" FontSize="26" FontWeight="SemiBold" />
-                    <TextBlock Text="Sign in once, then play with the account you choose." FontSize="13" Margin="0,4,0,0"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
-                <ui:Button Grid.Column="1" Content="Add account" Icon="Add28" VerticalAlignment="Center" Click="Add_Click" />
-            </Grid>
-            <ui:Card Grid.Row="1" Margin="0,0,0,18">
-                <StackPanel>
-                    <TextBlock Text="Pick a game" FontSize="15" FontWeight="Medium" />
-                    <TextBlock Text="Paste a Roblox game link or place ID, then press Play on an account. Roblox may change its shared last-signed-in account."
-                               FontSize="12" Margin="0,4,0,10" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
-                    <ui:TextBox x:Name="PlaceBox" PlaceholderText="Game link or place ID" />
-                </StackPanel>
-            </ui:Card>
-            <Grid Grid.Row="2" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="Switch accounts" FontSize="25" FontWeight="SemiBold" />
+                <TextBlock Text="Choose an account for your next game. This won't switch an already running Roblox client."
+                           Margin="0,5,0,0" FontSize="13" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+            <StackPanel Grid.Row="1" Margin="0,20,0,18">
+                <TextBlock Text="GAME LINK OR PLACE ID" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                <ui:TextBox x:Name="PlaceBox" Margin="0,7,0,0" PlaceholderText="Paste a Roblox game link or place ID"
+                            AutomationProperties.Name="Game link or place ID" />
+            </StackPanel>
+            <Grid Grid.Row="2" Margin="0,0,0,8">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <TextBlock Text="SAVED ACCOUNTS" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
                 <TextBlock Grid.Column="1" Text="Only on this Windows user" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
             </Grid>
             <Grid Grid.Row="3">
-                <TextBlock x:Name="EmptyText" Text="No accounts yet. Add one to get started." HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl x:Name="AccountsList">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <ui:Card Margin="0,0,0,8">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="68" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid Width="60" Height="60" HorizontalAlignment="Left">
-                                            <Ellipse Fill="{DynamicResource ControlFillColorSecondaryBrush}" />
-                                            <TextBlock Text="{Binding Initial}" FontSize="23" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            <Ellipse>
-                                                <Ellipse.Fill><ImageBrush ImageSource="{Binding Avatar}" Stretch="UniformToFill" /></Ellipse.Fill>
-                                            </Ellipse>
-                                        </Grid>
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,12,0">
-                                            <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Username}" FontSize="12" Margin="0,2,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                            <TextBlock Text="{Binding Status}" FontSize="11" Margin="0,4,0,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <ui:Button Content="▶ Play" ToolTip="Play the selected game as this account" Click="Play_Click" />
-                                            <ui:Button Content="Sign in" Margin="6,0,0,0" ToolTip="Connect or refresh this account" Click="Reconnect_Click" />
-                                            <ui:Button Content="Remove" Margin="6,0,0,0" Click="Remove_Click" />
-                                        </StackPanel>
-                                    </Grid>
-                                </ui:Card>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                <TextBlock x:Name="EmptyText" Text="No accounts yet. Add an account to get started." TextWrapping="Wrap"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                <ListBox x:Name="AccountsList" Background="Transparent" BorderThickness="0" Padding="0"
+                         HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         AutomationProperties.Name="Saved accounts" SelectionChanged="AccountsList_SelectionChanged">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="10,8" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding AccessibleLabel}" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Row" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Stretch" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" /></Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                                <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource SystemAccentBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource SystemAccentBrush}" /></Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid MinHeight="56">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="64" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Grid Width="52" Height="52" HorizontalAlignment="Left">
+                                    <Ellipse Fill="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{Binding Initial}" FontSize="21" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Ellipse><Ellipse.Fill><ImageBrush ImageSource="{Binding Avatar}" Stretch="UniformToFill" /></Ellipse.Fill></Ellipse>
+                                </Grid>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Username}" FontSize="12" Margin="0,1,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{Binding Status}" FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
             </Grid>
+            <StackPanel Grid.Row="4" Margin="0,12,0,0">
+                <TextBlock x:Name="SelectionHint" Text="Select an account to play or manage it." FontSize="12" TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,10" />
+                <ui:Button Content="Add an account" Icon="PersonAdd20" Height="40" HorizontalAlignment="Stretch"
+                           HorizontalContentAlignment="Center" Click="Add_Click" />
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <ui:Button x:Name="PlayAccountButton" Content="Play as selected" Icon="Play20" Appearance="Primary" Height="40"
+                               HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" IsEnabled="False" Click="Play_Click" />
+                    <ui:Button x:Name="ReconnectButton" Grid.Column="1" Content="Sign in again" Margin="8,0,0,0" IsEnabled="False" Click="Reconnect_Click" />
+                    <ui:Button x:Name="RemoveButton" Grid.Column="2" Content="Remove" Margin="8,0,0,0" IsEnabled="False" Click="Remove_Click" />
+                </Grid>
+            </StackPanel>
         </Grid>
     </Grid>
 </base:WpfUiWindow>
