@@ -20,6 +20,19 @@ namespace Bloxstrap.UI.Elements.About.Pages
         {
             DataContext = new AboutViewModel();
             InitializeComponent();
+
+            // Test builds show the alpha mark here too.
+            if (App.IsPreReleaseBuild)
+            {
+                try
+                {
+                    var icon = new System.Windows.Media.Imaging.BitmapImage(
+                        new Uri("pack://application:,,,/Resources/BuffStrapAlpha.png", UriKind.Absolute));
+                    icon.Freeze();
+                    Image1.Source = icon;
+                }
+                catch (Exception) { }
+            }
         }
 
         private void UiPage_KeyDown(object sender, KeyEventArgs e)

@@ -33,9 +33,69 @@ namespace Bloxstrap.UI.Elements.Dialogs
                 Close();
             };
 
+            viewModel.FactoryResetRequested += (_, _) => ConfirmFactoryReset();
+
             DataContext = viewModel;
 
             InitializeComponent();
+
+            ApplyPreReleaseIdentity();
+        }
+
+        /// <summary>
+        /// Test builds wear the alpha mark: the hourglass replaces the usual icon on
+        /// the launch menu and in the taskbar.
+        /// </summary>
+        private void ApplyPreReleaseIdentity()
+        {
+            if (!App.IsPreReleaseBuild) return;
+
+            try
+            {
+                var icon = new BitmapImage(new Uri("pack://application:,,,/Resources/BuffStrapAlpha.png", UriKind.Absolute));
+                icon.Freeze();
+                Icon = icon;
+                AlphaLogo.Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine("LaunchMenuDialog::ApplyPreReleaseIdentity", ex.Message);
+            }
+        }
+
+        private void ConfirmFactoryReset()
+        {
+            var result = Frontend.ShowMessageBox(
+                "Factory reset BuffStrap?\n\n" +
+                "This deletes every BuffStrap setting, saved account session, favorite, imported cursor, log " +
+                "and installed client copy on this Windows user, then reopens BuffStrap as if it were new.\n\n" +
+                "Roblox itself, your games and Windows files are not touched.",
+                MessageBoxImage.Warning,
+                MessageBoxButton.YesNo);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            int removed;
+            try
+            {
+                removed = Bloxstrap.Utility.FactoryReset.Clear();
+            }
+            catch (Exception ex)
+            {
+                Frontend.ShowMessageBox("The reset could not finish.\n\n" + ex.Message, MessageBoxImage.Error);
+                return;
+            }
+
+            App.Logger.WriteLine("LaunchMenuDialog::ConfirmFactoryReset", $"Removed {removed} data entries");
+
+            if (!Bloxstrap.Utility.FactoryReset.Reopen())
+            {
+                Frontend.ShowMessageBox("BuffStrap was reset but could not reopen itself. Start it again from its shortcut.", MessageBoxImage.Information);
+            }
+
+            // Exit without saving settings again, so nothing is written back.
+            App.Terminate();
         }
     }
 }

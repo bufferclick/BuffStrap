@@ -30,6 +30,10 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- Only shown by pre-release builds, where it replaces the usual mark. -->
+                <Image x:Name="AlphaLogo" Width="76" Height="76" Margin="0,0,0,12" Visibility="Collapsed"
+                       Source="pack://application:,,,/Resources/BuffStrapAlpha.png"
+                       RenderOptions.BitmapScalingMode="HighQuality" />
                 <Image Width="220" Height="52" Source="{DynamicResource BuffStrapWordmark}"
                        RenderOptions.BitmapScalingMode="HighQuality" />
                 <TextBlock Text="{Binding Version, Mode=OneTime}" Margin="0,8,0,0"
