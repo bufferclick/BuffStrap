@@ -90,6 +90,7 @@
     <Compile Include="..\Shared\RobloxGamePreviewClient.cs" Link="RobloxGamePreviewClient.cs" />
     <Compile Include="..\Shared\RobloxAccountClient.cs" Link="RobloxAccountClient.cs" />
     <Compile Include="..\Shared\BackupService.cs" Link="BackupService.cs" />
+    <Compile Include="..\Shared\CursorImage.cs" Link="CursorImage.cs" />
   </ItemGroup>
 
   <ItemGroup>

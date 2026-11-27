@@ -62,6 +62,29 @@
             </ComboBox>
         </controls:OptionControl>
 
+        <controls:OptionControl
+            Header="Custom cursor set"
+            Description="Roblox draws its pointer with a single 64x64 image, so BuffStrap imports the normal arrow from a Windows cursor package. Get cursors opens the rw-designer cursor library in your browser; download a set, then press Import. The built-in presets above write the same image, so whichever you choose last wins.">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="44" Height="44" CornerRadius="8" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                        <Image Source="{Binding SelectedCursorSetImage, Mode=OneWay}" Stretch="Uniform" Margin="5"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                    </Border>
+                    <ComboBox Margin="10,0,0,0" Padding="10,5,10,5" Width="215" VerticalAlignment="Center"
+                              ItemsSource="{Binding CursorSets, Mode=OneWay}" DisplayMemberPath="Name"
+                              SelectedItem="{Binding SelectedCursorSet, Mode=TwoWay}"
+                              AutomationProperties.Name="Custom cursor set" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <ui:Button Icon="ArrowDownload16" Content="Get cursors" Command="{Binding OpenCursorLibraryCommand}" />
+                    <ui:Button Margin="6,0,0,0" Icon="FolderOpen16" Content="Import" Command="{Binding ImportCursorCommand}" />
+                    <ui:Button Margin="6,0,0,0" Icon="Delete16" Content="Remove" Appearance="Danger"
+                               ToolTip="Remove the selected custom cursor set" Command="{Binding RemoveCursorCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </controls:OptionControl>
+
         <controls:OptionControl 
             Header="{x:Static resources:Strings.Menu_Mods_Presets_OldAvatarEditor_Title}" 
             Description="{x:Static resources:Strings.Menu_Mods_Presets_OldAvatarEditor_Description}">
