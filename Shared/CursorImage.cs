@@ -685,6 +685,21 @@ public static class CursorPackage
     private static string ReadText(ZipArchiveEntry entry, long limit) =>
         Encoding.UTF8.GetString(ReadAll(entry, limit));
 
+    /// <summary>True when the bytes hold something Roblox can wear.</summary>
+    private static bool IsUsable(byte[] bytes)
+    {
+        try
+        {
+            if (CursorImageReader.IsPngFile(bytes))
+                CursorImageReader.ReadPngImage(bytes);
+            else
+                CursorImageReader.Read(bytes);
+
+            return true;
+        }
+        catch (InvalidDataException) { return false; }
+    }
+
     private static byte[] ReadAll(ZipArchiveEntry entry, long limit)
     {
         if (entry.Length > limit) throw new InvalidDataException("The cursor package entry is too large.");
